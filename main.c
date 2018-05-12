@@ -193,7 +193,7 @@ read_input(void *data)
 
 	ssize_t last_pos = 0;
 	while (running) {
-		ssize_t r = recv(td->c, buffer, 999, MSG_WAITALL);
+		ssize_t r = recv(td->c, buffer, 999, 0);
 
 		if (unlikely(r == -1))
 			goto out;
@@ -211,18 +211,28 @@ read_input(void *data)
 
 				if (unlikely(line[0] == 'S')) {
 					char out[100];
-					sprintf(out, "SIZE %i %i\n", WIDTH, HEIGHT);
-					write(td->c, out, strlen(out));
+					size_t l = sprintf(out, "SIZE %i %i\n", WIDTH, HEIGHT);
+					send(td->c, out, l, 0);
 				} else if (likely(line[0] == 'P' && line[1] == 'X')) {
 					char *l = &line[2];
 					l = &l[1];
 					int x = read_nr_dec(&l);
 					l = &l[1];
 					int y = read_nr_dec(&l);
-					l = &l[1];
-					uint32_t c = read_nr_hex(&l);
-
-					updatePx(x, y, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff, 0);
+					if (*l == '\n') {
+						char out[100];
+						uint32_t data;
+						if (pixels)
+							data = pixels[x + y * WIDTH];
+						else
+							data = 0;
+						size_t l = sprintf(out, "PX %i %i %f\n", x, y, 0);
+						send(td->c, out, l, 0);
+					} else {
+						l = &l[1];
+						uint32_t c = read_nr_hex(&l);
+						updatePx(x, y, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff, 0);
+					}
 				}
 			}
 		}
