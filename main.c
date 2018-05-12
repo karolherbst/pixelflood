@@ -23,6 +23,7 @@
 static bool running;
 static uint32_t *pixels;
 static atomic_uint_fast64_t nr_pixels;
+static atomic_uint_fast64_t nr_threads;
 
 static const uint32_t WIDTH = 1920;
 static const uint32_t HEIGHT = 1080;
@@ -100,7 +101,7 @@ read_nr_hex(char **buf)
 static void*
 draw_loop(void *ptr)
 {
-	char text[] = "FPS: XXXX; Megapixels: XXXXXXXXXXXXXX; p/s: XXXXXXXXXX";
+	char text[] = "FPS: XXXX; Connections: XXXXX; Megapixels: XXXXXXXXXXXXXX; p/s: XXXXXXXXXX";
 
 	SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 	SDL_Window *window = SDL_CreateWindow("pixelflood", 0, 0, WIDTH, HEIGHT,
@@ -148,13 +149,15 @@ draw_loop(void *ptr)
 		if (fps_lasttime < (SDL_GetTicks() - FPS_INTERVAL * 1000))
 		{
 			uint64_t pixels = atomic_load(&nr_pixels);
+			uint64_t threads = atomic_load(&nr_threads);
 			fps_lasttime = SDL_GetTicks();
 			fps_current = fps_frames;
 			fps_frames = 0;
 
 			insert_nr_dec(&text[5], fps_current, 4);
-			insert_nr_dec(&text[23], pixels, 14);
-			insert_nr_dec(&text[44], pixels - px_last, 10);
+			insert_nr_dec(&text[24], threads, 5);
+			insert_nr_dec(&text[43], pixels, 14);
+			insert_nr_dec(&text[64], pixels - px_last, 10);
 
 			px_last = pixels;
 
@@ -187,6 +190,8 @@ static void*
 read_input(void *data)
 {
 	char buffer[1000];
+
+	atomic_fetch_add(&nr_threads, 1);
 
 	struct thread_data *td = (struct thread_data *)data;
 	char *line;
@@ -239,6 +244,7 @@ read_input(void *data)
 	}
 
 out:
+	atomic_fetch_add(&nr_threads, -1);
 	close(td->c);
 	free(td);
 	return NULL;
@@ -252,6 +258,7 @@ int main()
 
 	running = true;
 	atomic_init(&nr_pixels, 0);
+	atomic_init(&nr_threads, 0);
 	pixels = malloc(sizeof(*pixels) * WIDTH * HEIGHT);
 
 	if (pthread_create(&dsp_thread, NULL, draw_loop, NULL)) {
