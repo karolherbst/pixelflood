@@ -25,6 +25,7 @@ static uint32_t *pixels;
 static atomic_uint_fast64_t nr_pixels;
 static atomic_uint_fast64_t nr_threads;
 
+static const uint32_t NET_BUFFER = 15000;
 static const uint32_t WIDTH = 1920;
 static const uint32_t HEIGHT = 1080;
 static const float FPS_INTERVAL = 1.0; //seconds
@@ -189,16 +190,16 @@ struct thread_data {
 static void*
 read_input(void *data)
 {
-	char buffer[1000];
+	char buffer[NET_BUFFER + 50];
 
 	atomic_fetch_add(&nr_threads, 1);
 
 	struct thread_data *td = (struct thread_data *)data;
 	char *line;
 
-	ssize_t last_pos = 0;
 	while (running) {
-		ssize_t r = recv(td->c, buffer, 999, 0);
+		ssize_t last_pos = 0;
+		ssize_t r = recv(td->c, buffer, NET_BUFFER, 0);
 
 		if (r == -1)
 			goto out;
@@ -206,9 +207,14 @@ read_input(void *data)
 		if (r == 0)
 			goto out;
 
-		for (int i = 0; i < 1000; ++i) {
+		for (int i = 0; i <= NET_BUFFER; ++i) {
 			if (buffer[i] == EOF)
 				goto out;
+
+			if (i == NET_BUFFER && buffer[i] != '\n') {
+				while (i < NET_BUFFER + 50 && 1 == recv(td->c, &buffer[i], 1, 0) && buffer[i] != '\n')
+					++i;
+			}
 
 			if (buffer[i] == '\n') {
 				line = &buffer[last_pos];
