@@ -17,13 +17,17 @@
 
 #define likely(x)       __builtin_expect((x),1)
 #define unlikely(x)     __builtin_expect((x),0)
-//#define likely(x) (x)
-//#define unlikely(x) (x)
 
 static bool running;
+// for performance we don't ever lock the pixels buffer, because after a while
+// it doesn't matter anyway
 static uint32_t *pixels;
+/* strictly speaking the number of drawn pixels should be an atomic, but it
+ * has a too big impact on performance and having a correct value doesn't
+ * matter anyway
+ */
 static uint64_t nr_pixels;
-static uint64_t nr_threads;
+static _Atomic uint32_t nr_threads;
 
 static const uint32_t NET_BUFFER = 1 << 15;
 static const uint32_t WIDTH = 1920;
