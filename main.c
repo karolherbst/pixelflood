@@ -15,10 +15,10 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
-//#define likely(x)       __builtin_expect((x),1)
-//#define unlikely(x)     __builtin_expect((x),0)
-#define likely(x) (x)
-#define unlikely(x) (x)
+#define likely(x)       __builtin_expect((x),1)
+#define unlikely(x)     __builtin_expect((x),0)
+//#define likely(x) (x)
+//#define unlikely(x) (x)
 
 static bool running;
 static uint32_t *pixels;
@@ -37,7 +37,7 @@ static const char NUMBERSHEX[] = "0123456789abcdefABCDEF";
 static void
 updatePx(int x, int y, int r, int g, int b, int a)
 {
-	if (x >= WIDTH || y >= HEIGHT)
+	if (unlikely(x >= WIDTH || y >= HEIGHT))
 		return;
 
 	uint32_t data = b | (g << 8) | (r << 16) | (a << 24);
@@ -63,7 +63,7 @@ read_nr_dec(char **buf)
 	for (;;)
 	{
 		char c = **buf;
-		if (c < '0' || c > '9')
+		if (unlikely(c < '0' || c > '9'))
 			return result;
 
 		result *= 10;
@@ -201,14 +201,14 @@ read_input(void *data)
 		ssize_t last_pos = 0;
 		ssize_t r = recv(td->c, buffer, NET_BUFFER, 0);
 
-		if (r == -1)
+		if (unlikely(r == -1))
 			goto out;
 
-		if (r == 0)
+		if (unlikely(r == 0))
 			goto out;
 
 		for (int i = 0; i <= NET_BUFFER; ++i) {
-			if (buffer[i] == EOF)
+			if (unlikely(buffer[i] == EOF))
 				goto out;
 
 			if (i == NET_BUFFER && buffer[i] != '\n') {
@@ -220,20 +220,20 @@ read_input(void *data)
 				line = &buffer[last_pos];
 				last_pos = i + 1;
 
-				if (line[0] == 'S') {
+				if (unlikely(line[0] == 'S')) {
 					char out[100];
 					size_t l = sprintf(out, "SIZE %i %i\n", WIDTH, HEIGHT);
 					send(td->c, out, l, 0);
-				} else if (line[0] == 'P' && line[1] == 'X') {
+				} else if (likely(line[0] == 'P' && line[1] == 'X')) {
 					char *l = &line[2];
 					l = &l[1];
 					int x = read_nr_dec(&l);
 					l = &l[1];
 					int y = read_nr_dec(&l);
-					if (*l == '\n') {
+					if (unlikely(*l == '\n')) {
 						char out[100];
 						uint32_t data;
-						if (pixels)
+						if (likely(pixels != NULL))
 							data = pixels[x + y * WIDTH];
 						else
 							data = 0;
