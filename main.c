@@ -220,7 +220,7 @@ read_input(void *data)
 				last_pos = i + 1;
 
 				if (unlikely(line[0] == 'S')) {
-					char out[100];
+					char out[20];
 					size_t l = sprintf(out, "SIZE %i %i\n", WIDTH, HEIGHT);
 					send(td->c, out, l, 0);
 				} else if (likely(line[0] == 'P' && line[1] == 'X')) {
@@ -230,7 +230,7 @@ read_input(void *data)
 					l = &l[1];
 					int y = read_nr_dec(&l);
 					if (unlikely(*l == '\n')) {
-						char out[100];
+						char out[28];
 						uint32_t data;
 						if (likely(pixels != NULL))
 							data = pixels[x + y * WIDTH];
