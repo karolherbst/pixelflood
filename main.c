@@ -25,7 +25,7 @@ static uint32_t *pixels;
 static atomic_uint_fast64_t nr_pixels;
 static atomic_uint_fast64_t nr_threads;
 
-static const uint32_t NET_BUFFER = 15000;
+static const uint32_t NET_BUFFER = 1 << 15;
 static const uint32_t WIDTH = 1920;
 static const uint32_t HEIGHT = 1080;
 static const float FPS_INTERVAL = 1.0; //seconds
