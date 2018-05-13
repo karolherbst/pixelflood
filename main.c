@@ -34,10 +34,6 @@ static const uint32_t WIDTH = 1920;
 static const uint32_t HEIGHT = 1080;
 static const float FPS_INTERVAL = 1.0; //seconds
 
-static const char WHITESPACE[] = " \t";
-static const char NUMBERS[] = "0123456789";
-static const char NUMBERSHEX[] = "0123456789abcdefABCDEF";
-
 static void
 updatePx(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
@@ -64,7 +60,7 @@ read_nr_dec(char **buf)
 {
 	uint64_t result = 0;
 
-	for (;;)
+	while (true)
 	{
 		char c = **buf;
 		if (unlikely(c < '0' || c > '9'))
@@ -82,8 +78,7 @@ static uint64_t
 read_nr_hex(char **buf)
 {
 	uint64_t result = 0;
-	bool done = false;
-	while (!done)
+	while (true)
 	{
 		char c = **buf;
 		if (c >= '0' && c<= '9') {
