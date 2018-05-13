@@ -9,8 +9,7 @@
 #include <pthread.h>
 
 #include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
+#include <sys/select.h>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -180,6 +179,7 @@ draw_loop(void *ptr)
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
+	return NULL;
 }
 
 struct thread_data {
@@ -207,7 +207,7 @@ read_input(void *data)
 			goto out;
 
 		for (int i = 0; i <= NET_BUFFER && i <= r; ++i) {
-			if (unlikely(buffer[i] == EOF))
+			if (unlikely(buffer[i] == EOF || !running))
 				goto out;
 
 			if ((i == NET_BUFFER || i == r) && buffer[i] != '\n') {
