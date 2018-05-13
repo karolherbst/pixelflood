@@ -237,7 +237,7 @@ read_input(void *data)
 							data = pixels[x + y * WIDTH];
 						else
 							data = 0;
-						size_t l = sprintf(out, "PX %i %i %f\n", x, y, 0);
+						size_t l = sprintf(out, "PX %i %i %x\n", x, y, data);
 						send(td->c, out, l, 0);
 					} else {
 						l = &l[1];
