@@ -9,6 +9,8 @@
 #include <pthread.h>
 
 #include <arpa/inet.h>
+#include <sys/epoll.h>
+#include <sys/eventfd.h>
 #include <sys/select.h>
 
 #include <SDL2/SDL.h>
@@ -32,6 +34,7 @@ static const uint32_t NET_BUFFER = 1 << 15;
 static const uint32_t WIDTH = 1920;
 static const uint32_t HEIGHT = 1080;
 static const float FPS_INTERVAL = 1.0; //seconds
+static int quit_event = 0;
 
 static void
 updatePx(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
@@ -97,6 +100,13 @@ read_nr_hex(char **buf)
 	return result;
 }
 
+static void
+quit_application()
+{
+	running = false;
+	eventfd_write(quit_event, 1);
+}
+
 static void*
 draw_loop(void *ptr)
 {
@@ -130,12 +140,12 @@ draw_loop(void *ptr)
 			case SDL_KEYDOWN: {
 				switch (event.key.keysym.sym) {
 				case SDLK_q:
-					running = false;
+					quit_application();
 				}
 				break;
 			}
 			case SDL_QUIT:
-				running = false;
+				quit_application();
 				break;
 			}
 		}
@@ -280,16 +290,42 @@ int main()
 	bind(s, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
 	listen(s, 1000);
 
-	while (running) {
-		struct thread_data *data = malloc(sizeof(*data));
-		data->c = accept(s, (struct sockaddr*)NULL, NULL);
+	int epfd = epoll_create1(0);
 
-		pthread_create(&read_thread, NULL, read_input, data);
-		pthread_setname_np(read_thread, "pixelflood data");
+	struct epoll_event events[2];
+	events[0].events = EPOLLIN;
+	events[0].data.fd = s;
+	epoll_ctl(epfd, EPOLL_CTL_ADD, s, &events[0]);
+
+	// setup event for quitting
+	quit_event = eventfd(0, EFD_NONBLOCK);
+
+	events[1].events = EPOLLIN;
+	events[1].data.fd = quit_event;
+	epoll_ctl(epfd, EPOLL_CTL_ADD, quit_event, &events[1]);
+
+	struct epoll_event pending;
+	while (running) {
+		int num_ready = epoll_wait(epfd, &pending, 1, 5000);
+		if (!num_ready)
+			continue;
+		if (num_ready < 0)
+			break;
+
+		if (unlikely(pending.data.fd == quit_event))
+			break;
+
+		for(int i = 0; i < num_ready; i++) {
+			struct thread_data *data = malloc(sizeof(*data));
+			data->c = accept(s, (struct sockaddr*)NULL, NULL);
+
+			pthread_create(&read_thread, NULL, read_input, data);
+			pthread_setname_np(read_thread, "pixelflood data");
+		}
 	}
 
+	close(epfd);
 	pthread_join(dsp_thread, NULL);
-
 	free(pixels);
 	return EXIT_SUCCESS;
 }
