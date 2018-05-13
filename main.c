@@ -22,8 +22,8 @@
 
 static bool running;
 static uint32_t *pixels;
-static atomic_uint_fast64_t nr_pixels;
-static atomic_uint_fast64_t nr_threads;
+static uint64_t nr_pixels;
+static uint64_t nr_threads;
 
 static const uint32_t NET_BUFFER = 1 << 15;
 static const uint32_t WIDTH = 1920;
@@ -35,14 +35,14 @@ static const char NUMBERS[] = "0123456789";
 static const char NUMBERSHEX[] = "0123456789abcdefABCDEF";
 
 static void
-updatePx(int x, int y, int r, int g, int b, int a)
+updatePx(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
 	if (unlikely(x >= WIDTH || y >= HEIGHT))
 		return;
 
 	uint32_t data = b | (g << 8) | (r << 16) | (a << 24);
 	pixels[x + y * WIDTH] = data;
-	atomic_fetch_add(&nr_pixels, 1);
+	++nr_pixels;
 }
 
 static void
@@ -149,8 +149,8 @@ draw_loop(void *ptr)
 		fps_frames++;
 		if (fps_lasttime < (SDL_GetTicks() - FPS_INTERVAL * 1000))
 		{
-			uint64_t pixels = atomic_load(&nr_pixels);
-			uint64_t threads = atomic_load(&nr_threads);
+			uint64_t pixels = nr_pixels;
+			uint64_t threads = nr_threads;
 			fps_lasttime = SDL_GetTicks();
 			fps_current = fps_frames;
 			fps_frames = 0;
@@ -192,7 +192,7 @@ read_input(void *data)
 {
 	char buffer[NET_BUFFER + 50];
 
-	atomic_fetch_add(&nr_threads, 1);
+	++nr_threads;
 
 	struct thread_data *td = (struct thread_data *)data;
 	char *line;
@@ -250,7 +250,7 @@ read_input(void *data)
 	}
 
 out:
-	atomic_fetch_add(&nr_threads, -1);
+	--nr_threads;
 	close(td->c);
 	free(td);
 	return NULL;
@@ -263,8 +263,6 @@ int main()
 	pthread_t read_thread;
 
 	running = true;
-	atomic_init(&nr_pixels, 0);
-	atomic_init(&nr_threads, 0);
 	pixels = malloc(sizeof(*pixels) * WIDTH * HEIGHT);
 
 	if (pthread_create(&dsp_thread, NULL, draw_loop, NULL)) {
