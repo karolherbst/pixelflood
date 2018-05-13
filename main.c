@@ -207,11 +207,11 @@ read_input(void *data)
 		if (unlikely(r == 0))
 			goto out;
 
-		for (int i = 0; i <= NET_BUFFER; ++i) {
+		for (int i = 0; i <= NET_BUFFER && i <= r; ++i) {
 			if (unlikely(buffer[i] == EOF))
 				goto out;
 
-			if (i == NET_BUFFER && buffer[i] != '\n') {
+			if ((i == NET_BUFFER || i == r) && buffer[i] != '\n') {
 				while (i < NET_BUFFER + 50 && 1 == recv(td->c, &buffer[i], 1, 0) && buffer[i] != '\n')
 					++i;
 			}
