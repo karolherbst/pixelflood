@@ -28,15 +28,15 @@ static atomic_uint_fast64_t nr_threads;
 static const uint32_t WIDTH = 1920;
 static const uint32_t HEIGHT = 1080;
 static const float FPS_INTERVAL = 1.0; //seconds
+
 static const char WHITESPACE[] = " \t";
 static const char NUMBERS[] = "0123456789";
 static const char NUMBERSHEX[] = "0123456789abcdefABCDEF";
-static const uint16_t THREAD_BUFFER = 5000;
 
 static void
 updatePx(int x, int y, int r, int g, int b, int a)
 {
-	if (unlikely(x >= WIDTH || y >= HEIGHT))
+	if (x >= WIDTH || y >= HEIGHT)
 		return;
 
 	uint32_t data = b | (g << 8) | (r << 16) | (a << 24);
@@ -200,10 +200,10 @@ read_input(void *data)
 	while (running) {
 		ssize_t r = recv(td->c, buffer, 999, 0);
 
-		if (unlikely(r == -1))
+		if (r == -1)
 			goto out;
 
-		if (unlikely(r == 0))
+		if (r == 0)
 			goto out;
 
 		for (int i = 0; i < 1000; ++i) {
@@ -214,11 +214,11 @@ read_input(void *data)
 				line = &buffer[last_pos];
 				last_pos = i + 1;
 
-				if (unlikely(line[0] == 'S')) {
+				if (line[0] == 'S') {
 					char out[100];
 					size_t l = sprintf(out, "SIZE %i %i\n", WIDTH, HEIGHT);
 					send(td->c, out, l, 0);
-				} else if (likely(line[0] == 'P' && line[1] == 'X')) {
+				} else if (line[0] == 'P' && line[1] == 'X') {
 					char *l = &line[2];
 					l = &l[1];
 					int x = read_nr_dec(&l);
