@@ -30,11 +30,13 @@ static uint32_t *pixels;
 static uint64_t nr_pixels;
 static _Atomic uint32_t nr_threads;
 
-static const uint32_t NET_BUFFER = 1 << 15;
+// 1 << 14 seems to be a good enough value
+// lower value decreases displaying latency, but reducing overall throughput
+static const uint32_t NET_BUFFER = 1 << 14;
 static const uint32_t WIDTH = 1920;
 static const uint32_t HEIGHT = 1080;
 static const float FPS_INTERVAL = 1.0; //seconds
-static int quit_event = 0;
+static int quit_event;
 
 static void
 updatePx(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
@@ -210,10 +212,7 @@ read_input(void *data)
 		ssize_t last_pos = 0;
 		ssize_t r = recv(td->c, buffer, NET_BUFFER, 0);
 
-		if (unlikely(r == -1))
-			goto out;
-
-		if (unlikely(r == 0))
+		if (unlikely(r == -1 || r == 0))
 			goto out;
 
 		for (int i = 0; i <= NET_BUFFER && i <= r; ++i) {
@@ -229,11 +228,7 @@ read_input(void *data)
 				line = &buffer[last_pos];
 				last_pos = i + 1;
 
-				if (unlikely(line[0] == 'S')) {
-					char out[20];
-					size_t l = sprintf(out, "SIZE %i %i\n", WIDTH, HEIGHT);
-					send(td->c, out, l, 0);
-				} else if (likely(line[0] == 'P' && line[1] == 'X')) {
+				if (likely(line[0] == 'P' && line[1] == 'X')) {
 					char *l = &line[2];
 					l = &l[1];
 					int x = read_nr_dec(&l);
@@ -251,8 +246,12 @@ read_input(void *data)
 					} else {
 						l = &l[1];
 						uint32_t c = read_nr_hex(&l);
-						updatePx(x, y, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff, 0);
+						updatePx(x, y, c >> 16, c >> 8, c, 0);
 					}
+				} else if (likely(line[0] == 'S')) {
+					char out[20];
+					size_t l = sprintf(out, "SIZE %i %i\n", WIDTH, HEIGHT);
+					send(td->c, out, l, 0);
 				}
 			}
 		}
