@@ -3,6 +3,10 @@ cmake_minimum_required(VERSION 3.0)
 set(CMAKE_C_STANDARD_REQUIRED YES)
 set(CMAKE_C_STANDARD 11)
 
+set(CMAKE_C_FLAGS "")
+# use fno-inline to profile which function uses the most CPU when compiled with optimizations
+set(CMAKE_C_FLAGS_RELEASE "-Ofast -finline -mtune=native -march=native -g3 -ggdb3")
+
 set(CMAKE_THREAD_PREFER_PTHREAD YES)
 
 include(FindPkgConfig)
