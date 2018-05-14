@@ -28,6 +28,7 @@ static uint32_t *pixels;
  * matter anyway
  */
 static uint64_t nr_pixels;
+static uint64_t data_cnt = 0;
 static _Atomic uint32_t nr_threads;
 
 // 1 << 14 seems to be a good enough value
@@ -112,7 +113,7 @@ quit_application()
 static void*
 draw_loop(void *ptr)
 {
-	char text[] = "FPS: XXXX; Connections: XXXXX; Megapixels: XXXXXXXXXXXXXX; p/s: XXXXXXXXXX";
+	char text[] = "FPS: XXXX Clients: XXXXX Mp: XXXXXXXX kp/s: XXXXXXX Mbit/s: XXXXXXX";
 
 	SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 	SDL_Window *window = SDL_CreateWindow("pixelflood", 0, 0, WIDTH, HEIGHT,
@@ -166,11 +167,13 @@ draw_loop(void *ptr)
 			fps_frames = 0;
 
 			insert_nr_dec(&text[5], fps_current, 4);
-			insert_nr_dec(&text[24], threads, 5);
-			insert_nr_dec(&text[43], pixels, 14);
-			insert_nr_dec(&text[64], pixels - px_last, 10);
+			insert_nr_dec(&text[19], threads, 5);
+			insert_nr_dec(&text[29], pixels / 1000000, 8);
+			insert_nr_dec(&text[44], (pixels - px_last) / 1000, 7);
+			insert_nr_dec(&text[60], data_cnt / 125000, 7);
 
 			px_last = pixels;
+			data_cnt = 0;
 
 			SDL_DestroyTexture(ttexture);
 			SDL_FreeSurface(tsurface);
@@ -211,6 +214,7 @@ read_input(void *data)
 	while (running) {
 		ssize_t last_pos = 0;
 		ssize_t r = recv(td->c, buffer, NET_BUFFER, 0);
+		data_cnt += r;
 
 		if (unlikely(r == -1 || r == 0))
 			goto out;
@@ -220,8 +224,10 @@ read_input(void *data)
 				goto out;
 
 			if ((i == NET_BUFFER || i == r) && buffer[i] != '\n') {
+				int oi = i;
 				while (i < NET_BUFFER + 50 && 1 == recv(td->c, &buffer[i], 1, 0) && buffer[i] != '\n')
 					++i;
+				data_cnt += (i - oi);
 			}
 
 			if (buffer[i] == '\n') {
