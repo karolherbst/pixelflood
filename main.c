@@ -9,9 +9,11 @@
 #include <pthread.h>
 
 #include <arpa/inet.h>
-#include <sys/epoll.h>
-#include <sys/eventfd.h>
-#include <sys/select.h>
+
+#include <event2/bufferevent.h>
+#include <event2/event.h>
+#include <event2/event_struct.h>
+#include <fcntl.h>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -19,7 +21,6 @@
 #define likely(x)       __builtin_expect((x),1)
 #define unlikely(x)     __builtin_expect((x),0)
 
-static bool running;
 // for performance we don't ever lock the pixels buffer, because after a while
 // it doesn't matter anyway
 static uint32_t *pixels;
@@ -33,11 +34,27 @@ static _Atomic uint32_t nr_threads;
 
 // 1 << 14 seems to be a good enough value
 // lower value decreases displaying latency, but reducing overall throughput
-static const uint32_t NET_BUFFER = 1 << 14;
+static const uint32_t NET_BUFFER_SIZE = 1 << 14;
 static const uint32_t WIDTH = 1920;
 static const uint32_t HEIGHT = 1080;
 static const float FPS_INTERVAL = 1.0; //seconds
-static int quit_event;
+
+static struct event_base *evbase;
+
+static int
+setnonblock(int fd)
+{
+	int flags;
+
+	flags = fcntl(fd, F_GETFL);
+	if (flags < 0)
+		return flags;
+	flags |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, flags) < 0)
+		return -1;
+
+	return 0;
+}
 
 static void
 updatePx(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
@@ -106,8 +123,11 @@ read_nr_hex(char **buf)
 static void
 quit_application()
 {
-	running = false;
-	eventfd_write(quit_event, 1);
+	struct timeval timeout = {
+		.tv_sec = 1,
+		.tv_usec = 0,
+	};
+	event_base_loopexit(evbase, &timeout);
 }
 
 static void*
@@ -135,6 +155,7 @@ draw_loop(void *ptr)
 
 	uint64_t px_last = 0;
 
+	bool running = true;
 	while (running) {
 		uint32_t pitch = WIDTH * sizeof(*pixels);
 
@@ -144,11 +165,13 @@ draw_loop(void *ptr)
 				switch (event.key.keysym.sym) {
 				case SDLK_q:
 					quit_application();
+					running = false;
 				}
 				break;
 			}
 			case SDL_QUIT:
 				quit_application();
+				running = false;
 				break;
 			}
 		}
@@ -197,86 +220,100 @@ draw_loop(void *ptr)
 	return NULL;
 }
 
-struct thread_data {
+struct client_data {
 	int c;
+	struct bufferevent *bev;
+	char stored_cmd[50];
+	uint8_t len;
 };
 
-static void*
-read_input(void *data)
+static void
+on_error(struct bufferevent *bev, short ev, void *data)
 {
-	char buffer[NET_BUFFER + 50];
+	struct client_data *client = (struct client_data *)data;
 
-	++nr_threads;
+	bufferevent_free(bev);
+	close(client->c);
+	free(client);
+	--nr_threads;
+}
 
-	struct thread_data *td = (struct thread_data *)data;
-	char *line;
+static void
+on_read(struct bufferevent *bev, void *data)
+{
+	struct client_data *client = (struct client_data *)data;
+	char buffer[NET_BUFFER_SIZE + 50];
 
-	while (running) {
-		ssize_t last_pos = 0;
-		ssize_t r = recv(td->c, buffer, NET_BUFFER, 0);
-		data_cnt += r;
+	size_t offset = client->len;
+	client->len = 0;
+	memcpy(buffer, client->stored_cmd, offset);
 
-		if (unlikely(r == -1 || r == 0))
-			goto out;
+	ssize_t last_pos = 0;
+	size_t r = bufferevent_read(bev, &buffer[offset], NET_BUFFER_SIZE);
+	data_cnt += r;
 
-		for (int i = 0; i <= NET_BUFFER && i <= r; ++i) {
-			if (unlikely(buffer[i] == EOF || !running))
-				goto out;
+	for (int i = offset; i < (r + offset); ++i) {
+		if (i == r + offset - 1 && buffer[i] != '\n') {
+			// store the data for the next iteration:
+			client->len = r + offset - last_pos;
+			memcpy(client->stored_cmd, &buffer[last_pos], client->len);
+			return;
+		}
 
-			if ((i == NET_BUFFER || i == r) && buffer[i] != '\n') {
-				int oi = i;
-				while (i < NET_BUFFER + 50 && 1 == recv(td->c, &buffer[i], 1, 0) && buffer[i] != '\n')
-					++i;
-				data_cnt += (i - oi);
-			}
+		if (buffer[i] == '\n') {
+			char *line = &buffer[last_pos];
+			last_pos = i + 1;
 
-			if (buffer[i] == '\n') {
-				line = &buffer[last_pos];
-				last_pos = i + 1;
-
-				if (likely(line[0] == 'P' && line[1] == 'X')) {
-					char *l = &line[2];
+			if (likely(line[0] == 'P' && line[1] == 'X')) {
+				char *l = &line[2];
+				l = &l[1];
+				int x = read_nr_dec(&l);
+				l = &l[1];
+				int y = read_nr_dec(&l);
+				if (unlikely(*l == '\n')) {
+					char out[28];
+					uint32_t data;
+					if (likely(pixels != NULL))
+						data = pixels[x + y * WIDTH];
+					else
+						data = 0;
+					size_t l = sprintf(out, "PX %i %i %x\n", x, y, data);
+					send(client->c, out, l, 0);
+				} else {
 					l = &l[1];
-					int x = read_nr_dec(&l);
-					l = &l[1];
-					int y = read_nr_dec(&l);
-					if (unlikely(*l == '\n')) {
-						char out[28];
-						uint32_t data;
-						if (likely(pixels != NULL))
-							data = pixels[x + y * WIDTH];
-						else
-							data = 0;
-						size_t l = sprintf(out, "PX %i %i %x\n", x, y, data);
-						send(td->c, out, l, 0);
-					} else {
-						l = &l[1];
-						uint32_t c = read_nr_hex(&l);
-						updatePx(x, y, c >> 16, c >> 8, c, 0);
-					}
-				} else if (likely(line[0] == 'S')) {
-					char out[20];
-					size_t l = sprintf(out, "SIZE %i %i\n", WIDTH, HEIGHT);
-					send(td->c, out, l, 0);
+					uint32_t c = read_nr_hex(&l);
+					updatePx(x, y, c >> 16, c >> 8, c, 0);
 				}
+			} else if (likely(line[0] == 'S')) {
+				char out[20];
+				size_t l = sprintf(out, "SIZE %i %i\n", WIDTH, HEIGHT);
+				send(client->c, out, l, 0);
 			}
 		}
 	}
+}
 
-out:
-	--nr_threads;
-	close(td->c);
-	free(td);
-	return NULL;
+static void
+on_accept(int s, short ev, void *data)
+{
+	struct client_data *client = malloc(sizeof(*client));
+	client->c = accept(s, (struct sockaddr*)NULL, NULL);
+	client->len = 0;
+
+	++nr_threads;
+
+	setnonblock(client->c);
+	client->bev = bufferevent_socket_new(evbase, client->c, 0);
+	bufferevent_setcb(client->bev, on_read, NULL, on_error, client);
+	// we never want to buffer data beyond what we can process
+	bufferevent_setwatermark(client->bev, EV_READ, 15, NET_BUFFER_SIZE);
+	bufferevent_enable(client->bev, EV_READ);
 }
 
 int main()
 {
 	pthread_t dsp_thread;
-	struct thread_data data[8];
-	pthread_t read_thread;
 
-	running = true;
 	pixels = malloc(sizeof(*pixels) * WIDTH * HEIGHT);
 
 	if (pthread_create(&dsp_thread, NULL, draw_loop, NULL)) {
@@ -295,42 +332,19 @@ int main()
 	bind(s, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
 	listen(s, 1000);
 
-	int epfd = epoll_create1(0);
+	int reuseaddr = 1;
+	setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr));
+	setnonblock(s);
 
-	struct epoll_event events[2];
-	events[0].events = EPOLLIN;
-	events[0].data.fd = s;
-	epoll_ctl(epfd, EPOLL_CTL_ADD, s, &events[0]);
+	evbase = event_base_new();
 
-	// setup event for quitting
-	quit_event = eventfd(0, EFD_NONBLOCK);
+	struct event ev_accept;
+	event_assign(&ev_accept, evbase, s, EV_READ | EV_PERSIST, on_accept, NULL);
+	event_add(&ev_accept, NULL);
 
-	events[1].events = EPOLLIN;
-	events[1].data.fd = quit_event;
-	epoll_ctl(epfd, EPOLL_CTL_ADD, quit_event, &events[1]);
-
-	struct epoll_event pending;
-	while (running) {
-		int num_ready = epoll_wait(epfd, &pending, 1, 5000);
-		if (!num_ready)
-			continue;
-		if (num_ready < 0)
-			break;
-
-		if (unlikely(pending.data.fd == quit_event))
-			break;
-
-		for(int i = 0; i < num_ready; i++) {
-			struct thread_data *data = malloc(sizeof(*data));
-			data->c = accept(s, (struct sockaddr*)NULL, NULL);
-
-			pthread_create(&read_thread, NULL, read_input, data);
-			pthread_setname_np(read_thread, "pixelflood data");
-		}
-	}
-
-	close(epfd);
+	event_base_dispatch(evbase);
 	pthread_join(dsp_thread, NULL);
 	free(pixels);
+
 	return EXIT_SUCCESS;
 }
