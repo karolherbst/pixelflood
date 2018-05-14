@@ -30,7 +30,7 @@ static uint32_t *pixels;
  */
 static uint64_t nr_pixels;
 static uint64_t data_cnt = 0;
-static _Atomic uint32_t nr_threads;
+static _Atomic uint32_t nr_clients;
 
 // 1 << 14 seems to be a good enough value
 // lower value decreases displaying latency, but reducing overall throughput
@@ -184,7 +184,7 @@ draw_loop(void *ptr)
 		if (fps_lasttime < (SDL_GetTicks() - FPS_INTERVAL * 1000))
 		{
 			uint64_t pixels = nr_pixels;
-			uint64_t threads = nr_threads;
+			uint64_t threads = nr_clients;
 			fps_lasttime = SDL_GetTicks();
 			fps_current = fps_frames;
 			fps_frames = 0;
@@ -235,7 +235,7 @@ on_error(struct bufferevent *bev, short ev, void *data)
 	bufferevent_free(bev);
 	close(client->c);
 	free(client);
-	--nr_threads;
+	--nr_clients;
 }
 
 static void
@@ -300,7 +300,7 @@ on_accept(int s, short ev, void *data)
 	client->c = accept(s, (struct sockaddr*)NULL, NULL);
 	client->len = 0;
 
-	++nr_threads;
+	++nr_clients;
 
 	setnonblock(client->c);
 	client->bev = bufferevent_socket_new(evbase, client->c, 0);
