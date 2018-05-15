@@ -10,6 +10,7 @@
 
 #include <arpa/inet.h>
 
+#include <event2/buffer.h>
 #include <event2/bufferevent.h>
 #include <event2/event.h>
 #include <event2/event_struct.h>
@@ -242,26 +243,33 @@ static void
 on_read(struct bufferevent *bev, void *data)
 {
 	struct client_data *client = (struct client_data *)data;
-	char buffer[NET_BUFFER_SIZE + 50];
+
+	struct evbuffer_iovec v;
+	struct evbuffer *buf = bufferevent_get_input(bev);
+	evbuffer_peek(buf, -1, NULL, &v, 1);
+	char *buffer = v.iov_base;
 
 	size_t offset = client->len;
-	client->len = 0;
-	memcpy(buffer, client->stored_cmd, offset);
-
 	ssize_t last_pos = 0;
-	size_t r = bufferevent_read(bev, &buffer[offset], NET_BUFFER_SIZE);
-	data_cnt += r;
+	data_cnt += v.iov_len;
 
-	for (int i = offset; i < (r + offset); ++i) {
-		if (i == r + offset - 1 && buffer[i] != '\n') {
+	for (int i = 0; i < v.iov_len; ++i) {
+		if (i == v.iov_len - 1 && buffer[i] != '\n') {
 			// store the data for the next iteration:
-			client->len = r + offset - last_pos;
+			client->len = v.iov_len - last_pos;
 			memcpy(client->stored_cmd, &buffer[last_pos], client->len);
-			return;
+			break;
 		}
 
 		if (buffer[i] == '\n') {
-			char *line = &buffer[last_pos];
+			char *line;
+			if (client->len) {
+				// we cheat a little here
+				memcpy(&client->stored_cmd[client->len], buffer, i + 1);
+				client->len = 0;
+				line = client->stored_cmd;
+			} else
+				line = &buffer[last_pos];
 			last_pos = i + 1;
 
 			if (likely(line[0] == 'P' && line[1] == 'X')) {
@@ -291,6 +299,7 @@ on_read(struct bufferevent *bev, void *data)
 			}
 		}
 	}
+	evbuffer_drain(buf, v.iov_len);
 }
 
 static void
