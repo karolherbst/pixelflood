@@ -14,6 +14,7 @@
 #include <event2/bufferevent.h>
 #include <event2/event.h>
 #include <event2/event_struct.h>
+#include <event2/listener.h>
 #include <fcntl.h>
 
 #include <SDL2/SDL.h>
@@ -41,21 +42,6 @@ static const uint32_t HEIGHT = 1080;
 static const float FPS_INTERVAL = 1.0; //seconds
 
 static struct event_base *evbase;
-
-static int
-setnonblock(int fd)
-{
-	int flags;
-
-	flags = fcntl(fd, F_GETFL);
-	if (flags < 0)
-		return flags;
-	flags |= O_NONBLOCK;
-	if (fcntl(fd, F_SETFL, flags) < 0)
-		return -1;
-
-	return 0;
-}
 
 static void
 updatePx(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
@@ -303,20 +289,16 @@ on_read(struct bufferevent *bev, void *data)
 }
 
 static void
-on_accept(int s, short ev, void *data)
+on_accept(struct evconnlistener *listener, evutil_socket_t s, struct sockaddr *address, int socklen, void *ctx)
 {
 	struct client_data *client = malloc(sizeof(*client));
-	client->c = accept(s, (struct sockaddr*)NULL, NULL);
 	client->len = 0;
 
 	++nr_clients;
 
-	setnonblock(client->c);
-	client->bev = bufferevent_socket_new(evbase, client->c, 0);
-	bufferevent_setcb(client->bev, on_read, NULL, on_error, client);
-	// we never want to buffer data beyond what we can process
-	bufferevent_setwatermark(client->bev, EV_READ, 15, NET_BUFFER_SIZE);
-	bufferevent_enable(client->bev, EV_READ);
+        struct bufferevent *bev = bufferevent_socket_new(evbase, s, 0);
+        bufferevent_setcb(bev, on_read, NULL, on_error, client);
+        bufferevent_enable(bev, EV_READ);
 }
 
 int main()
@@ -331,25 +313,14 @@ int main()
 	}
 	pthread_setname_np(dsp_thread, "pixelflood disp");
 
-	int s = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in serv_addr = { 0 };
 
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	serv_addr.sin_port = htons(12345);
 
-	bind(s, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-	listen(s, 1000);
-
-	int reuseaddr = 1;
-	setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr));
-	setnonblock(s);
-
 	evbase = event_base_new();
-
-	struct event ev_accept;
-	event_assign(&ev_accept, evbase, s, EV_READ | EV_PERSIST, on_accept, NULL);
-	event_add(&ev_accept, NULL);
+	struct evconnlistener *listener = evconnlistener_new_bind(evbase, on_accept, NULL, LEV_OPT_CLOSE_ON_FREE, -1, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
 
 	event_base_dispatch(evbase);
 	pthread_join(dsp_thread, NULL);
