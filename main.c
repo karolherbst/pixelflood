@@ -13,7 +13,6 @@
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
 #include <event2/event.h>
-#include <event2/event_struct.h>
 #include <event2/listener.h>
 #include <fcntl.h>
 
@@ -39,9 +38,16 @@ static _Atomic uint32_t nr_clients;
 static const uint32_t NET_BUFFER_SIZE = 1 << 14;
 static const uint32_t WIDTH = 1920;
 static const uint32_t HEIGHT = 1080;
+static const uint32_t THREADS = 8;
 static const float FPS_INTERVAL = 1.0; //seconds
 
 static struct event_base *evbase;
+
+// we have to load balance a little, so keep information about each thread
+struct ThreadData {
+	pthread_t t;
+	struct event_base *evbase;
+} *thread_data;
 
 static void
 updatePx(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
@@ -114,6 +120,9 @@ quit_application()
 		.tv_sec = 1,
 		.tv_usec = 0,
 	};
+	event_base_loopexit(evbase, &timeout);
+	for (int i = 0; i < THREADS; ++i)
+		event_base_loopexit(thread_data[i].evbase, &timeout);
 	event_base_loopexit(evbase, &timeout);
 }
 
@@ -209,7 +218,6 @@ draw_loop(void *ptr)
 
 struct client_data {
 	int c;
-	struct bufferevent *bev;
 	char stored_cmd[50];
 	uint8_t len;
 };
@@ -294,11 +302,30 @@ on_accept(struct evconnlistener *listener, evutil_socket_t s, struct sockaddr *a
 	struct client_data *client = malloc(sizeof(*client));
 	client->len = 0;
 
-	++nr_clients;
+	// that scheduling is crap..
+	struct event_base *evbase = thread_data[nr_clients++ % THREADS].evbase;
 
         struct bufferevent *bev = bufferevent_socket_new(evbase, s, 0);
         bufferevent_setcb(bev, on_read, NULL, on_error, client);
-        bufferevent_enable(bev, EV_READ);
+        bufferevent_enable(bev, EV_READ | EV_PERSIST);
+}
+
+void *
+read_thread(void *data)
+{
+	struct ThreadData *td = data;
+
+	// each thread has its own event loop
+	// pseudo event so that the thread never exit
+	struct event *ev = event_new(td->evbase, -1, EV_PERSIST | EV_WRITE, NULL, NULL);
+	event_add(ev, NULL);
+
+	event_base_dispatch(td->evbase);
+
+	event_free(ev);
+	event_base_free(td->evbase);
+	pthread_exit(0);
+	return NULL;
 }
 
 int main()
@@ -319,11 +346,24 @@ int main()
 	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	serv_addr.sin_port = htons(12345);
 
+	// initialize threads
+	thread_data = malloc(sizeof(struct ThreadData) * THREADS);
+	for (int i = 0; i < THREADS; ++i) {
+		struct ThreadData *td = &thread_data[i];
+		td->evbase = event_base_new();
+		pthread_create(&td->t, NULL, read_thread, td);
+	}
+
 	evbase = event_base_new();
 	struct evconnlistener *listener = evconnlistener_new_bind(evbase, on_accept, NULL, LEV_OPT_CLOSE_ON_FREE, -1, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
 
 	event_base_dispatch(evbase);
+
+	for (int i = 0; i < THREADS; ++i) {
+		pthread_join(thread_data[i].t, NULL);
+	}
 	pthread_join(dsp_thread, NULL);
+	free(thread_data);
 	free(pixels);
 
 	return EXIT_SUCCESS;
