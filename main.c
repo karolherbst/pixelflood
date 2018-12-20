@@ -70,6 +70,28 @@ updatePxRGB(uint32_t x, uint32_t y, uint32_t rgb)
 	++nr_pixels;
 }
 
+static uint8_t
+hex_char_to_number_map[256];
+
+static uint8_t
+dec_char_to_number_map[256];
+
+static void
+init_char_to_number_map() {
+	memset(hex_char_to_number_map, 0xff, 256);
+	memset(dec_char_to_number_map, 0xff, 256);
+
+	for (int i = 0; i < 10; ++i) {
+		hex_char_to_number_map['0' + i] = i;
+		dec_char_to_number_map['0' + i] = i;
+	}
+
+	for (int i = 0; i < 6; ++i) {
+		hex_char_to_number_map['a' + i] = 0xa + i;
+		hex_char_to_number_map['A' + i] = 0xa + i;
+	}
+}
+
 static void
 insert_nr_dec(char *buf, uint64_t value, uint16_t length)
 {
@@ -88,11 +110,11 @@ read_nr_dec(char **buf)
 	while (true)
 	{
 		char c = **buf;
-		if (unlikely(c < '0' || c > '9'))
-			return result;
-
+		uint8_t v = dec_char_to_number_map[c];
+		if (v == 0xff)
+			break;
 		result *= 10;
-		result += c - '0';
+		result += v;
 		*buf = &(*buf)[1];
 	}
 
@@ -106,17 +128,11 @@ read_nr_hex(char **buf)
 	while (true)
 	{
 		char c = **buf;
-		if (c >= '0' && c<= '9') {
-			result *= 0x10;
-			result += c - '0';
-		} else if (c >= 'a' && c <= 'f') {
-			result *= 0x10;
-			result += c - 'a' + 0xa;
-		} else if (c >= 'A' && c <= 'F') {
-			result *= 0x10;
-			result += c - 'A' + 0xa;
-		} else
+		uint8_t v = hex_char_to_number_map[c];
+		if (v == 0xff)
 			break;
+		result *= 0x10;
+		result += v;
 		*buf = &(*buf)[1];
 	}
 
@@ -366,6 +382,7 @@ int main()
 {
 	pthread_t dsp_thread;
 
+	init_char_to_number_map();
 	pixels = malloc(sizeof(*pixels) * WIDTH * HEIGHT);
 
 	if (pthread_create(&dsp_thread, NULL, draw_loop, NULL)) {
