@@ -283,8 +283,12 @@ on_read(struct bufferevent *bev, void *data)
 					send(client->c, out, l, 0);
 				} else {
 					l = &l[1];
+					char *oldL = l;
 					uint32_t c = read_nr_hex(&l);
-					updatePx(x, y, c >> 16, c >> 8, c, 0);
+					if (likely(oldL + 8 == l))
+						updatePx(x, y, c >> 24, c >> 16, c >> 8, c);
+					else
+						updatePx(x, y, c >> 16, c >> 8, c, 0);
 				}
 			} else if (likely(line[0] == 'S')) {
 				char out[20];
