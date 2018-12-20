@@ -50,13 +50,22 @@ struct ThreadData {
 } *thread_data;
 
 static void
-updatePx(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+updatePxRGBA(int x, int y, uint_fast32_t rgba)
 {
 	if (unlikely(x >= WIDTH || y >= HEIGHT))
 		return;
 
-	uint32_t data = b | (g << 8) | (r << 16) | (a << 24);
-	pixels[x + y * WIDTH] = data;
+	pixels[x + y * WIDTH] = rgba;
+	++nr_pixels;
+}
+
+static void
+updatePxRGB(int x, int y, uint_fast32_t rgb)
+{
+	if (unlikely(x >= WIDTH || y >= HEIGHT))
+		return;
+
+	pixels[x + y * WIDTH] = (rgb << 8);
 	++nr_pixels;
 }
 
@@ -135,7 +144,7 @@ draw_loop(void *ptr)
 	SDL_Window *window = SDL_CreateWindow("pixelflood", 0, 0, WIDTH, HEIGHT,
 		SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE);
 	SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-	SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
+	SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
 
 	TTF_Init();
 	TTF_Font *font = TTF_OpenFont("/usr/share/fonts/gnu-free/FreeMono.ttf", 24);
@@ -286,9 +295,9 @@ on_read(struct bufferevent *bev, void *data)
 					char *oldL = l;
 					uint32_t c = read_nr_hex(&l);
 					if (likely(oldL + 8 == l))
-						updatePx(x, y, c >> 24, c >> 16, c >> 8, c);
+						updatePxRGBA(x, y, c);
 					else
-						updatePx(x, y, c >> 16, c >> 8, c, 0);
+						updatePxRGB(x, y, c);
 				}
 			} else if (likely(line[0] == 'S')) {
 				char out[20];
