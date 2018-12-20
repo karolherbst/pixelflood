@@ -50,22 +50,23 @@ struct ThreadData {
 } *thread_data;
 
 static void
-updatePxRGBA(int x, int y, uint_fast32_t rgba)
+updatePxRGBA(uint32_t x, uint32_t y, uint32_t rgba)
 {
 	if (unlikely(x >= WIDTH || y >= HEIGHT))
 		return;
 
-	pixels[x + y * WIDTH] = rgba;
+	// convert rgba to argb
+	pixels[x + y * WIDTH] = (rgba >> 8) | ((rgba & 0xff) << 24);
 	++nr_pixels;
 }
 
 static void
-updatePxRGB(int x, int y, uint_fast32_t rgb)
+updatePxRGB(uint32_t x, uint32_t y, uint32_t rgb)
 {
 	if (unlikely(x >= WIDTH || y >= HEIGHT))
 		return;
 
-	pixels[x + y * WIDTH] = (rgb << 8);
+	pixels[x + y * WIDTH] = rgb;
 	++nr_pixels;
 }
 
@@ -141,10 +142,30 @@ draw_loop(void *ptr)
 	char text[] = "FPS: XXXX Clients: XXXXX Mp: XXXXXXXX kp/s: XXXXXXX Mbit/s: XXXXXXX";
 
 	SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+
 	SDL_Window *window = SDL_CreateWindow("pixelflood", 0, 0, WIDTH, HEIGHT,
 		SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE);
 	SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-	SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
+
+	SDL_RendererInfo info;
+	if (SDL_GetRendererInfo(renderer, &info)) {
+		printf("failed to get rendered info\n");
+		exit(-1);
+		return NULL;
+	}
+
+	bool found_format = false;
+	for (int i = 0; i < info.num_texture_formats; ++i) {
+		if (info.texture_formats[i] == SDL_PIXELFORMAT_ARGB8888)
+			found_format = true;
+	}
+	if (!found_format) {
+		printf("couldn't find supported texture format\n");
+		exit(-1);
+		return NULL;
+	}
+
+	SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
 
 	TTF_Init();
 	TTF_Font *font = TTF_OpenFont("/usr/share/fonts/gnu-free/FreeMono.ttf", 24);
