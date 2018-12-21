@@ -94,7 +94,7 @@ insert_nr_dec(char *buf, uint64_t value, uint16_t length)
 	}
 }
 
-static uint32_t
+static inline uint32_t
 read_nr_dec(char **buf)
 {
 	uint32_t result = 0;
@@ -113,7 +113,7 @@ read_nr_dec(char **buf)
 	return result;
 }
 
-static uint32_t
+static inline uint32_t
 read_nr_hex(char **buf)
 {
 	uint32_t result = 0;
@@ -271,7 +271,7 @@ on_error(struct bufferevent *bev, short ev, void *data)
 	--nr_clients;
 }
 
-static void
+static inline void
 parse_line(char *buffer, struct client_data *client, int i, ssize_t *last_pos)
 {
 	char *line;
