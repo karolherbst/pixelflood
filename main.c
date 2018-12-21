@@ -50,7 +50,7 @@ struct ThreadData {
 } *thread_data;
 
 static void
-updatePxRGBA(uint32_t x, uint32_t y, uint32_t rgba)
+updatePxRGBA(uint_fast16_t x, uint_fast16_t y, uint32_t rgba)
 {
 	if (unlikely(x >= WIDTH || y >= HEIGHT))
 		return;
@@ -60,7 +60,7 @@ updatePxRGBA(uint32_t x, uint32_t y, uint32_t rgba)
 }
 
 static void
-updatePxRGB(uint32_t x, uint32_t y, uint32_t rgb)
+updatePxRGB(uint_fast16_t x, uint_fast16_t y, uint32_t rgb)
 {
 	if (unlikely(x >= WIDTH || y >= HEIGHT))
 		return;
@@ -275,7 +275,7 @@ static inline void
 parse_line(char *buffer, struct client_data *client, int i, ssize_t *last_pos)
 {
 	char *line;
-	if (client->len) {
+	if (unlikely(client->len)) {
 		// we cheat a little here
 		memcpy(&client->stored_cmd[client->len], buffer, i + 1);
 		client->len = 0;
@@ -309,7 +309,7 @@ parse_line(char *buffer, struct client_data *client, int i, ssize_t *last_pos)
 				updatePxRGB(x, y, c);
 			++nr_pixels;
 		}
-	} else if (likely(line[0] == 'S')) {
+	} else if (line[0] == 'S') {
 		char out[20];
 		size_t l = sprintf(out, "SIZE %i %i\n", WIDTH, HEIGHT);
 		send(client->c, out, l, 0);
@@ -332,7 +332,7 @@ on_read(struct bufferevent *bev, void *data)
 
 	int i;
 	int until = v.iov_len - 1;
-	for (i = 0; i < until; ++i) {
+	for (i = 0; likely(i < until); ++i) {
 		if (buffer[i] == '\n')
 			parse_line(buffer, client, i, &last_pos);
 	}
