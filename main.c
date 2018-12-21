@@ -274,7 +274,7 @@ on_error(struct bufferevent *bev, short ev, void *data)
 }
 
 static inline void
-parse_line(char *buffer, struct client_data *client, int i, ssize_t *last_pos)
+parse_line(char *buffer, struct client_data *client, int i, ssize_t *last_pos, uint32_t *l_nr_pixels)
 {
 	char *line;
 	if (unlikely(client->len)) {
@@ -307,7 +307,7 @@ parse_line(char *buffer, struct client_data *client, int i, ssize_t *last_pos)
 			char *oldL = l;
 			uint32_t argb = read_nr_hex(&l);
 			updatePxARGB(x, y, argb);
-			++nr_pixels;
+			++(*l_nr_pixels);
 		}
 	} else if (line[0] == 'S') {
 		char out[20];
@@ -325,6 +325,7 @@ on_read(struct bufferevent *bev, void *data)
 	struct evbuffer *buf = bufferevent_get_input(bev);
 	evbuffer_peek(buf, -1, NULL, &v, 1);
 	char *buffer = v.iov_base;
+	uint32_t l_nr_pixels;
 
 	size_t offset = client->len;
 	ssize_t last_pos = 0;
@@ -334,18 +335,19 @@ on_read(struct bufferevent *bev, void *data)
 	int until = v.iov_len - 1;
 	for (i = 0; likely(i < until); ++i) {
 		if (buffer[i] == '\n')
-			parse_line(buffer, client, i, &last_pos);
+			parse_line(buffer, client, i, &last_pos, &l_nr_pixels);
 	}
 
 	++i;
 	if (buffer[i] == '\n')
-		parse_line(buffer, client, i, &last_pos);
+		parse_line(buffer, client, i, &last_pos, &l_nr_pixels);
 	else {
 		// store the data for the next iteration:
 		client->len = v.iov_len - last_pos;
 		memcpy(client->stored_cmd, &buffer[last_pos], client->len);
 	}
 
+	nr_pixels += l_nr_pixels;
 	evbuffer_drain(buf, v.iov_len);
 }
 
