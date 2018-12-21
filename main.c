@@ -325,7 +325,7 @@ on_read(struct bufferevent *bev, void *data)
 	struct evbuffer *buf = bufferevent_get_input(bev);
 	evbuffer_peek(buf, -1, NULL, &v, 1);
 	char *buffer = v.iov_base;
-	uint32_t l_nr_pixels;
+	uint32_t l_nr_pixels = 0;
 
 	size_t offset = client->len;
 	ssize_t last_pos = 0;
