@@ -33,9 +33,6 @@ static uint64_t nr_pixels;
 static uint64_t data_cnt = 0;
 static _Atomic uint32_t nr_clients;
 
-// 1 << 14 seems to be a good enough value
-// lower value decreases displaying latency, but reducing overall throughput
-static const uint32_t NET_BUFFER_SIZE = 1 << 14;
 static const uint32_t WIDTH = 1920;
 static const uint32_t HEIGHT = 1080;
 static const uint32_t THREADS = 8;
@@ -104,6 +101,7 @@ read_nr_dec(char **buf)
 	return result;
 }
 
+// we assume its either 6 or 8 chars
 static inline uint32_t
 read_nr_hex(char **buf)
 {
