@@ -169,12 +169,14 @@ draw_loop(void *ptr)
 		return NULL;
 	}
 
+	SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+
 	SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
 
 	TTF_Init();
-	TTF_Font *font = TTF_OpenFont("/usr/share/fonts/gnu-free/FreeMono.ttf", 24);
+	TTF_Font *font = TTF_OpenFont("/usr/share/fonts/gnu-free/FreeMono.ttf", HEIGHT / 12);
 	SDL_Color color = { 255, 255, 255 };
-	SDL_Rect dstrect = { 0, 0, WIDTH, 50 };
+	SDL_Rect dstrect = { 0, 0, WIDTH, HEIGHT / 20 };
 	SDL_Surface *tsurface = TTF_RenderText_Solid(font, "Please stand by!                                 ", color);
 	SDL_Texture *ttexture = SDL_CreateTextureFromSurface(renderer, tsurface);
 
