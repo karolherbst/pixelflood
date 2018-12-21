@@ -14,6 +14,7 @@
 #include <event2/bufferevent.h>
 #include <event2/event.h>
 #include <event2/listener.h>
+#include <event2/thread.h>
 #include <fcntl.h>
 
 #include <SDL2/SDL.h>
@@ -137,7 +138,10 @@ quit_application()
 	event_base_loopexit(evbase, &timeout);
 	for (int i = 0; i < THREADS; ++i)
 		event_base_loopexit(thread_data[i].evbase, &timeout);
-	event_base_loopexit(evbase, &timeout);
+
+	event_base_loopbreak(evbase);
+	for (int i = 0; i < THREADS; ++i)
+		event_base_loopbreak(thread_data[i].evbase);
 }
 
 static void*
@@ -395,6 +399,8 @@ int main()
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	serv_addr.sin_port = htons(12345);
+
+	evthread_use_pthreads();
 
 	// initialize threads
 	thread_data = malloc(sizeof(struct ThreadData) * THREADS);

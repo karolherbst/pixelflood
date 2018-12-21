@@ -15,6 +15,7 @@ find_package(Threads REQUIRED)
 find_package(SDL2 REQUIRED)
 pkg_check_modules(SDL2_TTF SDL2_ttf)
 pkg_check_modules(LIBEVENT libevent)
+pkg_check_modules(LIBEVENT_PTHREADS libevent_pthreads)
 
 add_executable(pixelflood
   main.c
@@ -29,6 +30,7 @@ target_include_directories(pixelflood
 
 target_link_libraries(pixelflood
   ${LIBEVENT_LIBRARIES}
+  ${LIBEVENT_PTHREADS_LIBRARIES}
   ${SDL2_LIBRARIES}
   ${SDL2_TTF_LIBRARIES}
   Threads::Threads
