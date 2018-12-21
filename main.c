@@ -57,7 +57,6 @@ updatePxRGBA(uint32_t x, uint32_t y, uint32_t rgba)
 
 	// convert rgba to argb
 	pixels[x + y * WIDTH] = (rgba >> 8) | ((rgba & 0xff) << 24);
-	++nr_pixels;
 }
 
 static void
@@ -67,7 +66,6 @@ updatePxRGB(uint32_t x, uint32_t y, uint32_t rgb)
 		return;
 
 	pixels[x + y * WIDTH] = rgb;
-	++nr_pixels;
 }
 
 static uint8_t
@@ -77,7 +75,7 @@ static void
 init_char_to_number_map() {
 	memset(hex_char_to_number_map, 0xff, 256);
 
-	for (int i = 0; i < 10; ++i)
+	for (int i = 0; i <= 0x9; ++i)
 		hex_char_to_number_map['0' + i] = i;
 
 	for (int i = 0; i < 6; ++i) {
@@ -96,10 +94,10 @@ insert_nr_dec(char *buf, uint64_t value, uint16_t length)
 	}
 }
 
-static uint64_t
+static uint32_t
 read_nr_dec(char **buf)
 {
-	uint64_t result = 0;
+	uint32_t result = 0;
 
 	while (true)
 	{
@@ -115,10 +113,10 @@ read_nr_dec(char **buf)
 	return result;
 }
 
-static uint64_t
+static uint32_t
 read_nr_hex(char **buf)
 {
-	uint64_t result = 0;
+	uint32_t result = 0;
 	while (true)
 	{
 		char c = **buf;
@@ -274,6 +272,51 @@ on_error(struct bufferevent *bev, short ev, void *data)
 }
 
 static void
+parse_line(char *buffer, struct client_data *client, int i, ssize_t *last_pos)
+{
+	char *line;
+	if (client->len) {
+		// we cheat a little here
+		memcpy(&client->stored_cmd[client->len], buffer, i + 1);
+		client->len = 0;
+		line = client->stored_cmd;
+	} else
+		line = &buffer[*last_pos];
+	*last_pos = i + 1;
+
+	if (likely(line[0] == 'P' && line[1] == 'X')) {
+		char *l = &line[2];
+		l = &l[1];
+		int x = read_nr_dec(&l);
+		l = &l[1];
+		int y = read_nr_dec(&l);
+		if (unlikely(*l == '\n')) {
+			char out[28];
+			uint32_t data;
+			if (likely(pixels != NULL))
+				data = pixels[x + y * WIDTH];
+			else
+				data = 0;
+			size_t l = sprintf(out, "PX %i %i %x\n", x, y, data);
+			send(client->c, out, l, 0);
+		} else {
+			l = &l[1];
+			char *oldL = l;
+			uint32_t c = read_nr_hex(&l);
+			if (likely(oldL + 8 == l))
+				updatePxRGBA(x, y, c);
+			else
+				updatePxRGB(x, y, c);
+			++nr_pixels;
+		}
+	} else if (likely(line[0] == 'S')) {
+		char out[20];
+		size_t l = sprintf(out, "SIZE %i %i\n", WIDTH, HEIGHT);
+		send(client->c, out, l, 0);
+	}
+}
+
+static void
 on_read(struct bufferevent *bev, void *data)
 {
 	struct client_data *client = (struct client_data *)data;
@@ -287,56 +330,22 @@ on_read(struct bufferevent *bev, void *data)
 	ssize_t last_pos = 0;
 	data_cnt += v.iov_len;
 
-	for (int i = 0; i < v.iov_len; ++i) {
-		if (i == v.iov_len - 1 && buffer[i] != '\n') {
-			// store the data for the next iteration:
-			client->len = v.iov_len - last_pos;
-			memcpy(client->stored_cmd, &buffer[last_pos], client->len);
-			break;
-		}
-
-		if (buffer[i] == '\n') {
-			char *line;
-			if (client->len) {
-				// we cheat a little here
-				memcpy(&client->stored_cmd[client->len], buffer, i + 1);
-				client->len = 0;
-				line = client->stored_cmd;
-			} else
-				line = &buffer[last_pos];
-			last_pos = i + 1;
-
-			if (likely(line[0] == 'P' && line[1] == 'X')) {
-				char *l = &line[2];
-				l = &l[1];
-				int x = read_nr_dec(&l);
-				l = &l[1];
-				int y = read_nr_dec(&l);
-				if (unlikely(*l == '\n')) {
-					char out[28];
-					uint32_t data;
-					if (likely(pixels != NULL))
-						data = pixels[x + y * WIDTH];
-					else
-						data = 0;
-					size_t l = sprintf(out, "PX %i %i %x\n", x, y, data);
-					send(client->c, out, l, 0);
-				} else {
-					l = &l[1];
-					char *oldL = l;
-					uint32_t c = read_nr_hex(&l);
-					if (likely(oldL + 8 == l))
-						updatePxRGBA(x, y, c);
-					else
-						updatePxRGB(x, y, c);
-				}
-			} else if (likely(line[0] == 'S')) {
-				char out[20];
-				size_t l = sprintf(out, "SIZE %i %i\n", WIDTH, HEIGHT);
-				send(client->c, out, l, 0);
-			}
-		}
+	int i;
+	int until = v.iov_len - 1;
+	for (i = 0; i < until; ++i) {
+		if (buffer[i] == '\n')
+			parse_line(buffer, client, i, &last_pos);
 	}
+
+	++i;
+	if (buffer[i] == '\n')
+		parse_line(buffer, client, i, &last_pos);
+	else {
+		// store the data for the next iteration:
+		client->len = v.iov_len - last_pos;
+		memcpy(client->stored_cmd, &buffer[last_pos], client->len);
+	}
+
 	evbuffer_drain(buf, v.iov_len);
 }
 
