@@ -293,7 +293,8 @@ parse_line(char *buffer, struct client_data *client, int i, ssize_t *last_pos)
 				data = pixels[x + y * WIDTH];
 			else
 				data = 0;
-			size_t l = sprintf(out, "PX %i %i %x\n", x, y, data);
+			// convert from argb to rgba
+			size_t l = sprintf(out, "PX %i %i %x\n", x, y, (data >> 8) | (data << 24));
 			send(client->c, out, l, 0);
 		} else {
 			l = &l[1];
