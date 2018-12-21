@@ -50,22 +50,13 @@ struct ThreadData {
 } *thread_data;
 
 static void
-updatePxRGBA(uint_fast16_t x, uint_fast16_t y, uint32_t rgba)
+updatePxARGB(uint_fast16_t x, uint_fast16_t y, uint32_t argb)
 {
 	if (unlikely(x >= WIDTH || y >= HEIGHT))
 		return;
 
 	// convert rgba to argb
-	pixels[x + y * WIDTH] = (rgba >> 8) | ((rgba & 0xff) << 24);
-}
-
-static void
-updatePxRGB(uint_fast16_t x, uint_fast16_t y, uint32_t rgb)
-{
-	if (unlikely(x >= WIDTH || y >= HEIGHT))
-		return;
-
-	pixels[x + y * WIDTH] = rgb;
+	pixels[x + y * WIDTH] = argb;
 }
 
 static uint8_t
@@ -116,18 +107,25 @@ read_nr_dec(char **buf)
 static inline uint32_t
 read_nr_hex(char **buf)
 {
-	uint32_t result = 0;
-	while (true)
-	{
-		char c = **buf;
-		uint8_t v = hex_char_to_number_map[c];
-		if (v == 0xff)
-			break;
-		result *= 0x10;
-		result += v;
-		*buf = &(*buf)[1];
-	}
+	char *color = *buf;
+	uint32_t result =
+		hex_char_to_number_map[color[0]] << 20 |
+		hex_char_to_number_map[color[1]] << 16 |
+		hex_char_to_number_map[color[2]] << 12 |
+		hex_char_to_number_map[color[3]] <<  8 |
+		hex_char_to_number_map[color[4]] <<  4 |
+		hex_char_to_number_map[color[5]] <<  0;
 
+	char al = hex_char_to_number_map[color[6]];
+
+	*buf = &(*buf)[6];
+	if (al == 0xff)
+		return result;
+
+	result |=
+		hex_char_to_number_map[color[7]] << 24 |
+		al << 28;
+	*buf = &(*buf)[2];
 	return result;
 }
 
@@ -302,11 +300,8 @@ parse_line(char *buffer, struct client_data *client, int i, ssize_t *last_pos)
 		} else {
 			l = &l[1];
 			char *oldL = l;
-			uint32_t c = read_nr_hex(&l);
-			if (likely(oldL + 8 == l))
-				updatePxRGBA(x, y, c);
-			else
-				updatePxRGB(x, y, c);
+			uint32_t argb = read_nr_hex(&l);
+			updatePxARGB(x, y, argb);
 			++nr_pixels;
 		}
 	} else if (line[0] == 'S') {
