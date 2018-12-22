@@ -21,6 +21,8 @@ The Code is tuned for performance as much as possible and doesn't add "fancy" fe
 
 Networking is done event based through libevent2
 
+This server doesn't cheat in any way. All commands are supported as specified. None of the commands are dropped. No throttling.
+
 The pixelbuffer is displayed through SDL2.
 
 I was able to achieve around 22 Gbit/s or 135 MPixel/s on an Intel i7-7700HQ CPU with threaded clients running on the same machine.
