@@ -214,7 +214,6 @@ draw_loop(void *ptr)
 		}
 
 		SDL_UpdateTexture(texture, NULL, pixels, pitch);
-		SDL_RenderClear(renderer);
 		SDL_RenderCopy(renderer, texture, NULL, NULL);
 
 		fps_frames++;
