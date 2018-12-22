@@ -30,8 +30,8 @@ static uint32_t *pixels;
  * has a too big impact on performance and having a correct value doesn't
  * matter anyway
  */
-static uint64_t nr_pixels;
-static uint64_t data_cnt = 0;
+static _Atomic uint64_t nr_pixels;
+static _Atomic uint64_t data_cnt = 0;
 static _Atomic uint32_t nr_clients;
 
 static const uint32_t WIDTH = 1920;
@@ -192,6 +192,7 @@ draw_loop(void *ptr)
 
 	uint64_t px_last = 0;
 
+	SDL_Log("fps,clients,pixels,pixels_per_second,data_kb\n");
 	bool running = true;
 	while (running) {
 		uint32_t pitch = WIDTH * sizeof(*pixels);
@@ -238,6 +239,7 @@ draw_loop(void *ptr)
 			SDL_FreeSurface(tsurface);
 			tsurface = TTF_RenderText_Solid(font, (const char*)&text, color);
 			ttexture = SDL_CreateTextureFromSurface(renderer, tsurface);
+			SDL_Log("%f,%u,%llu,%llu,%llu\n", (float)fps_current, threads, pixels, pixels - px_last, data_cnt);
 		}
 
 		SDL_RenderCopy(renderer, ttexture, NULL, &dstrect);
