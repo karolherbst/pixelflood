@@ -100,11 +100,23 @@ read_nr_dec(char **buf)
 	return result;
 }
 
-// we assume its either 6 or 8 chars
+// we only get 2, 6 or 8 chars
 static inline uint32_t
 read_nr_hex(char **buf)
 {
 	char *color = *buf;
+
+	// gray
+	if (hex_char_to_number_map[color[2]] == 0xff) {
+		return
+			hex_char_to_number_map[color[0]] << 20 |
+			hex_char_to_number_map[color[1]] << 16 |
+			hex_char_to_number_map[color[0]] << 12 |
+			hex_char_to_number_map[color[1]] <<  8 |
+			hex_char_to_number_map[color[0]] <<  4 |
+			hex_char_to_number_map[color[1]] <<  0;
+	}
+
 	uint32_t result =
 		hex_char_to_number_map[color[0]] << 20 |
 		hex_char_to_number_map[color[1]] << 16 |
