@@ -34,6 +34,7 @@ static _Atomic uint32_t nr_clients;
 static const uint32_t WIDTH = 1920;
 static const uint32_t HEIGHT = 1080;
 static const uint32_t THREADS = 8;
+static const uint16_t PORT = 12345;
 static const float FPS_INTERVAL = 1.0; //seconds
 
 static struct event_base *evbase;
@@ -400,7 +401,7 @@ int main()
 
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	serv_addr.sin_port = htons(12345);
+	serv_addr.sin_port = htons(PORT);
 
 	evthread_use_pthreads();
 
