@@ -219,6 +219,7 @@ draw_loop(void *ptr)
 		{
 			uint64_t pixels = nr_pixels;
 			uint64_t threads = nr_clients;
+			float fps = ((float)1000 * fps_frames) / (SDL_GetTicks() - fps_lasttime);
 			fps_lasttime = SDL_GetTicks();
 			fps_current = fps_frames;
 			fps_frames = 0;
@@ -236,7 +237,7 @@ draw_loop(void *ptr)
 			SDL_FreeSurface(tsurface);
 			tsurface = TTF_RenderText_Solid(font, (const char*)&text, color);
 			ttexture = SDL_CreateTextureFromSurface(renderer, tsurface);
-			SDL_Log("%f,%u,%llu,%llu,%llu\n", (float)fps_current, threads, pixels, pixels - px_last, data_cnt);
+			SDL_Log("%f,%u,%llu,%llu,%llu\n", fps, threads, pixels, pixels - px_last, data_cnt);
 		}
 
 		SDL_RenderCopy(renderer, ttexture, NULL, &dstrect);
