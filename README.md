@@ -7,6 +7,7 @@ super high performance pixelflut server
 * GPU capable of displaying an ARGB8888 texture
 
 # software requiernments
+* fontconfig
 * libevent2
 * SDL2
 * SDL2_TTF
