@@ -14,6 +14,8 @@
 #include <event2/listener.h>
 #include <event2/thread.h>
 
+#include <fontconfig/fontconfig.h>
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
@@ -188,12 +190,33 @@ draw_loop(void *ptr)
 
 	SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
 
+	FcConfig* fc = FcInitLoadConfigAndFonts();
+	FcPattern* pat = FcNameParse("FreeMono");
+	FcConfigSubstitute(fc, pat, FcMatchPattern);
+	FcDefaultSubstitute(pat);
+
+	FcResult result;
+	FcPattern* fcfont = FcFontMatch(fc, pat, &result);
+	FcChar8* file = NULL;
+	if (fcfont)
+		FcPatternGetString(fcfont, FC_FILE, 0, &file);
+	if (!file) {
+		printf("Couldn't find FreeMono.ttf\n");
+		exit(-1);
+		return NULL;
+	}
+
 	TTF_Init();
-	TTF_Font *font = TTF_OpenFont("/usr/share/fonts/gnu-free/FreeMono.ttf", HEIGHT / 12);
+	TTF_Font *font = TTF_OpenFont(file, HEIGHT / 12);
 	SDL_Color color = { 255, 255, 255 };
 	SDL_Rect dstrect = { 0, 0, WIDTH, HEIGHT / 20 };
 	SDL_Surface *tsurface = TTF_RenderText_Solid(font, "Please stand by!                                 ", color);
 	SDL_Texture *ttexture = SDL_CreateTextureFromSurface(renderer, tsurface);
+
+	FcPatternDestroy(fcfont);
+	FcPatternDestroy(pat);
+	FcConfigDestroy(fc);
+	FcFini();
 
 	SDL_Event event;
 	uint32_t fps_lasttime = SDL_GetTicks();

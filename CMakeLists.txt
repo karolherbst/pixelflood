@@ -16,6 +16,7 @@ find_package(SDL2 REQUIRED)
 pkg_check_modules(SDL2_TTF SDL2_ttf)
 pkg_check_modules(LIBEVENT libevent)
 pkg_check_modules(LIBEVENT_PTHREADS libevent_pthreads)
+pkg_check_modules(FONTCONFIG fontconfig)
 
 add_executable(pixelflood
   main.c
@@ -23,12 +24,14 @@ add_executable(pixelflood
 
 target_include_directories(pixelflood
   PRIVATE
+    ${FONTCONFIG_INCLUDE_DIRS}
     ${LIBEVENT_INCLUDE_DIRS}
     ${SDL2_INCLUDE_DIRS}
     ${SDL2_TTF_INCLUDE_DIRS}
 )
 
 target_link_libraries(pixelflood
+  ${FONTCONFIG_LIBRARIES}
   ${LIBEVENT_LIBRARIES}
   ${LIBEVENT_PTHREADS_LIBRARIES}
   ${SDL2_LIBRARIES}
