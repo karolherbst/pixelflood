@@ -52,8 +52,6 @@ updatePxARGB(uint_fast16_t x, uint_fast16_t y, uint32_t argb)
 {
 	if (unlikely(x >= WIDTH || y >= HEIGHT))
 		return;
-
-	// convert rgba to argb
 	pixels[x + y * WIDTH] = argb;
 }
 
