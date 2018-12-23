@@ -12,7 +12,7 @@ set(CMAKE_THREAD_PREFER_PTHREAD YES)
 include(FindPkgConfig)
 
 find_package(Threads REQUIRED)
-find_package(SDL2 REQUIRED)
+pkg_check_modules(SDL2 SDL2)
 pkg_check_modules(SDL2_TTF SDL2_ttf)
 pkg_check_modules(LIBEVENT libevent)
 pkg_check_modules(LIBEVENT_PTHREADS libevent_pthreads)
