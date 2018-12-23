@@ -5,7 +5,7 @@ set(CMAKE_C_STANDARD 11)
 
 set(CMAKE_C_FLAGS "")
 # use fno-inline to profile which function uses the most CPU when compiled with optimizations
-set(CMAKE_C_FLAGS_RELEASE "-Ofast -flto -finline -mtune=native -march=native -funsafe-loop-optimizations -fwhole-program -g3 -ggdb3")
+set(CMAKE_C_FLAGS_RELEASE "-Ofast -flto -finline -mtune=native -march=native -funsafe-loop-optimizations -fwhole-program -g3 -ggdb3 -Wall")
 
 set(CMAKE_THREAD_PREFER_PTHREAD YES)
 

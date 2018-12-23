@@ -83,13 +83,13 @@ insert_nr_dec(char *buf, uint64_t value, uint16_t length)
 }
 
 static inline uint32_t
-read_nr_dec(char **buf)
+read_nr_dec(uint8_t **buf)
 {
 	uint32_t result = 0;
 
 	while (true)
 	{
-		char c = **buf;
+		uint8_t c = **buf;
 		uint8_t v = c - '0';
 		if (v > 9)
 			break;
@@ -103,9 +103,9 @@ read_nr_dec(char **buf)
 
 // we only get 2, 6 or 8 chars
 static inline uint32_t
-read_nr_hex(char **buf)
+read_nr_hex(uint8_t **buf)
 {
-	char *color = *buf;
+	uint8_t *color = *buf;
 
 	// gray
 	if (hex_char_to_number_map[color[2]] == 0xff) {
@@ -126,7 +126,7 @@ read_nr_hex(char **buf)
 		hex_char_to_number_map[color[4]] <<  4 |
 		hex_char_to_number_map[color[5]] <<  0;
 
-	char al = hex_char_to_number_map[color[6]];
+	uint8_t al = hex_char_to_number_map[color[6]];
 
 	*buf = &(*buf)[6];
 	if (al == 0xff)
@@ -190,7 +190,7 @@ draw_loop(void *ptr)
 	SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
 
 	FcConfig* fc = FcInitLoadConfigAndFonts();
-	FcPattern* pat = FcNameParse("FreeMono");
+	FcPattern* pat = FcNameParse((FcChar8 *)"FreeMono");
 	FcConfigSubstitute(fc, pat, FcMatchPattern);
 	FcDefaultSubstitute(pat);
 
@@ -206,7 +206,7 @@ draw_loop(void *ptr)
 	}
 
 	TTF_Init();
-	TTF_Font *font = TTF_OpenFont(file, HEIGHT / 12);
+	TTF_Font *font = TTF_OpenFont((char *)file, HEIGHT / 12);
 	SDL_Color color = { 255, 255, 255 };
 	SDL_Rect dstrect = { 0, 0, WIDTH, HEIGHT / 20 };
 	SDL_Surface *tsurface = TTF_RenderText_Solid(font, "Please stand by!                                 ", color);
@@ -293,7 +293,7 @@ draw_loop(void *ptr)
 
 struct client_data {
 	int c;
-	char stored_cmd[50];
+	uint8_t stored_cmd[50];
 	uint8_t len;
 };
 
@@ -309,9 +309,9 @@ on_error(struct bufferevent *bev, short ev, void *data)
 }
 
 static inline void
-parse_line(char *buffer, struct client_data *client, int i, ssize_t *last_pos, uint32_t *l_nr_pixels)
+parse_line(uint8_t *buffer, struct client_data *client, int i, ssize_t *last_pos, uint32_t *l_nr_pixels)
 {
-	char *line;
+	uint8_t *line;
 	if (unlikely(client->len)) {
 		// we cheat a little here
 		memcpy(&client->stored_cmd[client->len], buffer, i + 1);
@@ -322,7 +322,7 @@ parse_line(char *buffer, struct client_data *client, int i, ssize_t *last_pos, u
 	*last_pos = i + 1;
 
 	if (likely(line[0] == 'P' && line[1] == 'X')) {
-		char *l = &line[2];
+		uint8_t *l = &line[2];
 		l = &l[1];
 		int x = read_nr_dec(&l);
 		l = &l[1];
@@ -339,7 +339,6 @@ parse_line(char *buffer, struct client_data *client, int i, ssize_t *last_pos, u
 			send(client->c, out, l, 0);
 		} else {
 			l = &l[1];
-			char *oldL = l;
 			uint32_t argb = read_nr_hex(&l);
 			updatePxARGB(x, y, argb);
 			++(*l_nr_pixels);
@@ -359,10 +358,9 @@ on_read(struct bufferevent *bev, void *data)
 	struct evbuffer_iovec v;
 	struct evbuffer *buf = bufferevent_get_input(bev);
 	evbuffer_peek(buf, -1, NULL, &v, 1);
-	char *buffer = v.iov_base;
+	uint8_t *buffer = v.iov_base;
 	uint32_t l_nr_pixels = 0;
 
-	size_t offset = client->len;
 	ssize_t last_pos = 0;
 	data_cnt += v.iov_len;
 
@@ -448,7 +446,7 @@ int main()
 	}
 
 	evbase = event_base_new();
-	struct evconnlistener *listener = evconnlistener_new_bind(evbase, on_accept, NULL, LEV_OPT_CLOSE_ON_FREE, -1, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+	evconnlistener_new_bind(evbase, on_accept, NULL, LEV_OPT_CLOSE_ON_FREE, -1, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
 
 	event_base_dispatch(evbase);
 
