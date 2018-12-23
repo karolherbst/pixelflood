@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -252,7 +253,7 @@ draw_loop(void *ptr)
 		if (fps_lasttime < (SDL_GetTicks() - FPS_INTERVAL * 1000))
 		{
 			uint64_t pixels = nr_pixels;
-			uint64_t threads = nr_clients;
+			uint32_t threads = nr_clients;
 			float fps = ((float)1000 * fps_frames) / (SDL_GetTicks() - fps_lasttime);
 			fps_lasttime = SDL_GetTicks();
 			fps_current = fps_frames;
@@ -271,7 +272,7 @@ draw_loop(void *ptr)
 			SDL_FreeSurface(tsurface);
 			tsurface = TTF_RenderText_Solid(font, (const char*)&text, color);
 			ttexture = SDL_CreateTextureFromSurface(renderer, tsurface);
-			SDL_Log("%f,%u,%llu,%llu,%llu\n", fps, threads, pixels, pixels - px_last, data_cnt);
+			SDL_Log("%f,%u,%"PRIu64",%"PRIu64",%"PRIu64"\n", fps, threads, pixels, pixels - px_last, data_cnt);
 		}
 
 		SDL_RenderCopy(renderer, ttexture, NULL, &dstrect);
