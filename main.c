@@ -130,7 +130,7 @@ read_nr_hex(uint8_t **buf)
 
 	*buf = &(*buf)[6];
 	if (al == 0xff)
-		return result;
+		return result | 0xff000000;
 
 	result |=
 		hex_char_to_number_map[color[7]] << 24 |
