@@ -329,11 +329,7 @@ parse_line(uint8_t *buffer, struct client_data *client, int i, ssize_t *last_pos
 		int y = read_nr_dec(&l);
 		if (unlikely(*l == '\n')) {
 			char out[28];
-			uint32_t data;
-			if (likely(pixels != NULL))
-				data = pixels[x + y * WIDTH];
-			else
-				data = 0;
+			uint32_t data = pixels[x + y * WIDTH];
 			// convert from argb to rgba
 			size_t l = sprintf(out, "PX %i %i %x\n", x, y, (data >> 8) | (data << 24));
 			send(client->c, out, l, 0);
