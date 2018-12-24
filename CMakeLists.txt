@@ -5,7 +5,7 @@ set(CMAKE_C_STANDARD 11)
 
 set(CMAKE_C_FLAGS "-flto -mtune=native -march=native -fwhole-program -g -ggdb3 -Wall -fno-stack-protector")
 set(CMAKE_C_FLAGS_DEBUG "-O0 -fno-inline")
-set(CMAKE_C_FLAGS_RELEASE "-Ofast -fno-inline -funsafe-loop-optimizations -fwhole-program -fomit-frame-pointer")
+set(CMAKE_C_FLAGS_RELEASE "-Ofast -finline -funsafe-loop-optimizations -fwhole-program -fomit-frame-pointer")
 
 set(CMAKE_THREAD_PREFER_PTHREAD YES)
 
