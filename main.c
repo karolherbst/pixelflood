@@ -418,6 +418,8 @@ read_thread(void *data)
 
 int main()
 {
+	pthread_setname_np(pthread_self(), "pixelflood main");
+
 	pthread_t dsp_thread;
 
 	init_char_to_number_map();
@@ -443,6 +445,7 @@ int main()
 		struct ThreadData *td = &thread_data[i];
 		td->evbase = event_base_new();
 		pthread_create(&td->t, NULL, read_thread, td);
+		pthread_setname_np(td->t, "pixelflood net");
 	}
 
 	evbase = event_base_new();
