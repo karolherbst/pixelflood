@@ -444,6 +444,7 @@ int main()
 
 	mtx_lock(&px_mtx);
 	mtx_unlock(&px_mtx);
+	mtx_destroy(&px_mtx);
 	// initialize threads
 	thread_data = malloc(sizeof(struct ThreadData) * THREADS);
 	for (int i = 0; i < THREADS; ++i) {
