@@ -27,6 +27,7 @@
 // for performance we don't ever lock the pixels buffer, because after a while
 // it doesn't matter anyway
 static uint32_t *pixels;
+mtx_t px_mtx;
 /* strictly speaking the number of drawn pixels should be an atomic, but it
  * has a too big impact on performance and having a correct value doesn't
  * matter anyway
@@ -159,6 +160,9 @@ quit_application()
 static int
 draw_loop(void *ptr)
 {
+	pixels = malloc(sizeof(*pixels) * WIDTH * HEIGHT);
+	mtx_unlock(&px_mtx);
+
 	char text[] = "FPS: XXXX Clients: XXXXX Mp: XXXXXXXX kp/s: XXXXXXX Mbit/s: XXXXXXX";
 
 	SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
@@ -421,7 +425,8 @@ int main()
 	thrd_t dsp_thread;
 
 	init_char_to_number_map();
-	pixels = malloc(sizeof(*pixels) * WIDTH * HEIGHT);
+	mtx_init(&px_mtx, mtx_plain);
+	mtx_lock(&px_mtx);
 
 	if (thrd_create(&dsp_thread, draw_loop, NULL)) {
 		printf("failed to create display thread!\n");
@@ -437,6 +442,8 @@ int main()
 
 	evthread_use_pthreads();
 
+	mtx_lock(&px_mtx);
+	mtx_unlock(&px_mtx);
 	// initialize threads
 	thread_data = malloc(sizeof(struct ThreadData) * THREADS);
 	for (int i = 0; i < THREADS; ++i) {
