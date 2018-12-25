@@ -8,6 +8,7 @@
 
 #define __USE_GNU 1
 #include <pthread.h>
+#include <threads.h>
 
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
@@ -44,7 +45,7 @@ static struct event_base *evbase;
 
 // we have to load balance a little, so keep information about each thread
 struct ThreadData {
-	pthread_t t;
+	thrd_t t;
 	struct event_base *evbase;
 } *thread_data;
 
@@ -155,7 +156,7 @@ quit_application()
 		event_base_loopbreak(thread_data[i].evbase);
 }
 
-static void*
+static int
 draw_loop(void *ptr)
 {
 	char text[] = "FPS: XXXX Clients: XXXXX Mp: XXXXXXXX kp/s: XXXXXXX Mbit/s: XXXXXXX";
@@ -171,7 +172,7 @@ draw_loop(void *ptr)
 	if (SDL_GetRendererInfo(renderer, &info)) {
 		printf("failed to get rendered info\n");
 		exit(-1);
-		return NULL;
+		return -1;
 	}
 
 	bool found_format = false;
@@ -182,7 +183,7 @@ draw_loop(void *ptr)
 	if (!found_format) {
 		printf("couldn't find supported texture format\n");
 		exit(-1);
-		return NULL;
+		return -1;
 	}
 
 	SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
@@ -203,7 +204,7 @@ draw_loop(void *ptr)
 	if (!file) {
 		printf("Couldn't find FreeMono.ttf\n");
 		exit(-1);
-		return NULL;
+		return -1;
 	}
 
 	TTF_Init();
@@ -289,7 +290,7 @@ draw_loop(void *ptr)
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
-	return NULL;
+	return 0;
 }
 
 struct client_data {
@@ -395,7 +396,7 @@ on_accept(struct evconnlistener *listener, evutil_socket_t s, struct sockaddr *a
         bufferevent_enable(bev, EV_READ | EV_PERSIST);
 }
 
-void *
+int
 read_thread(void *data)
 {
 	struct ThreadData *td = data;
@@ -409,20 +410,20 @@ read_thread(void *data)
 
 	event_free(ev);
 	event_base_free(td->evbase);
-	pthread_exit(0);
-	return NULL;
+	thrd_exit(0);
+	return 0;
 }
 
 int main()
 {
-	pthread_setname_np(pthread_self(), "pixelflood main");
+	pthread_setname_np(thrd_current(), "pixelflood main");
 
-	pthread_t dsp_thread;
+	thrd_t dsp_thread;
 
 	init_char_to_number_map();
 	pixels = malloc(sizeof(*pixels) * WIDTH * HEIGHT);
 
-	if (pthread_create(&dsp_thread, NULL, draw_loop, NULL)) {
+	if (thrd_create(&dsp_thread, draw_loop, NULL)) {
 		printf("failed to create display thread!\n");
 		return EXIT_FAILURE;
 	}
@@ -441,7 +442,7 @@ int main()
 	for (int i = 0; i < THREADS; ++i) {
 		struct ThreadData *td = &thread_data[i];
 		td->evbase = event_base_new();
-		pthread_create(&td->t, NULL, read_thread, td);
+		thrd_create(&td->t, read_thread, td);
 		pthread_setname_np(td->t, "pixelflood net");
 	}
 
@@ -451,9 +452,9 @@ int main()
 	event_base_dispatch(evbase);
 
 	for (int i = 0; i < THREADS; ++i) {
-		pthread_join(thread_data[i].t, NULL);
+		thrd_join(thread_data[i].t, NULL);
 	}
-	pthread_join(dsp_thread, NULL);
+	thrd_join(dsp_thread, NULL);
 	free(thread_data);
 	free(pixels);
 
