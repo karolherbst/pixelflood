@@ -7,6 +7,7 @@ if [ ! -d "build" ]; then
 fi
 
 cmake --build build
+export MESA_NO_ERROR=1
 #export SDL_VIDEODRIVER=kmsdrm
 #/usr/bin/valgrind --tool=drd \
 #strace -c \
