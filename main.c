@@ -336,41 +336,56 @@ on_error(struct bufferevent *bev, short ev, void *data)
 }
 
 static inline void
-parse_line(uint8_t *buffer, struct client_data *client, int i, ssize_t *last_pos, uint32_t *l_nr_pixels)
+parse_line(uint8_t **buffer, struct client_data *client, uint32_t *l_nr_pixels)
 {
+	bool save = false;
 	uint8_t *line;
 	if (unlikely(client->len)) {
 		// we cheat a little here
-		memcpy(&client->stored_cmd[client->len], buffer, i + 1);
+		line = *buffer;
+		int i = 0;
+		while (line[i] != '\n')
+			++i;
+
+		memcpy(&client->stored_cmd[client->len], *buffer, i + 1);
 		client->len = 0;
 		line = client->stored_cmd;
-	} else
-		line = &buffer[*last_pos];
-	*last_pos = i + 1;
+		*buffer = &(*buffer)[i + 1];
+	} else {
+		line = *buffer;
+		save = true;
+	}
 
 	if (likely(line[0] == 'P' && line[1] == 'X')) {
-		uint8_t *l = &line[2];
-		l = &l[1];
-		int x = read_nr_dec(&l);
-		l = &l[1];
-		int y = read_nr_dec(&l);
-		if (unlikely(*l == '\n')) {
+		line = &line[3];
+		int x = read_nr_dec(&line);
+		line = &line[1];
+		int y = read_nr_dec(&line);
+		if (unlikely(*line == '\n')) {
 			char out[28];
 			uint32_t data = pixels[x + y * WIDTH];
 			// convert from argb to rgba
 			size_t l = sprintf(out, "PX %i %i %x\n", x, y, (data >> 8) | (data << 24));
 			send(client->c, out, l, 0);
 		} else {
-			l = &l[1];
-			uint32_t argb = read_nr_hex(&l);
+			line = &line[1];
+			uint32_t argb = read_nr_hex(&line);
 			updatePxARGB(x, y, argb);
 			++(*l_nr_pixels);
 		}
-	} else if (line[0] == 'S') {
+	} else if (likely(line[0] == 'S')) {
 		char out[20];
 		size_t l = sprintf(out, "SIZE %i %i\n", WIDTH, HEIGHT);
 		send(client->c, out, l, 0);
+		while (line[0] != '\n')
+			line = &line[1];
+	} else {
+		while (line[0] != '\n')
+			line = &line[1];
 	}
+
+	if (save)
+		*buffer = &line[1];
 }
 
 static void
@@ -381,26 +396,27 @@ on_read(struct bufferevent *bev, void *data)
 	struct evbuffer_iovec v;
 	struct evbuffer *buf = bufferevent_get_input(bev);
 	evbuffer_peek(buf, -1, NULL, &v, 1);
+	uint8_t *sbuffer = v.iov_base;
 	uint8_t *buffer = v.iov_base;
 	uint32_t l_nr_pixels = 0;
 
-	ssize_t last_pos = 0;
 	data_cnt += v.iov_len;
 
 	int i;
 	int until = v.iov_len - 1;
-	for (i = 0; likely(i < until); ++i) {
+	for (i = until; i >= 0; --i)
 		if (buffer[i] == '\n')
-			parse_line(buffer, client, i, &last_pos, &l_nr_pixels);
-	}
+			break;
 
-	++i;
-	if (buffer[i] == '\n')
-		parse_line(buffer, client, i, &last_pos, &l_nr_pixels);
-	else {
+	sbuffer = &sbuffer[i + 1];
+
+	while (buffer != sbuffer)
+		parse_line(&buffer, client, &l_nr_pixels);
+
+	if (i != until) {
 		// store the data for the next iteration:
-		client->len = v.iov_len - last_pos;
-		memcpy(client->stored_cmd, &buffer[last_pos], client->len);
+		client->len = v.iov_len - (i + 1);
+		memcpy(client->stored_cmd, buffer, client->len);
 	}
 
 	nr_pixels += l_nr_pixels;
