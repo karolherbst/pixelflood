@@ -296,6 +296,10 @@ sdl_gl_draw_loop(SDL_Window *window)
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
+
+	mtx_lock(&px_mtx);
+	free(pixels);
+	mtx_unlock(&px_mtx);
 	return 0;
 }
 
@@ -460,8 +464,6 @@ int main()
 	evthread_use_pthreads();
 
 	mtx_lock(&px_mtx);
-	mtx_unlock(&px_mtx);
-	mtx_destroy(&px_mtx);
 	// initialize threads
 	thread_data = malloc(sizeof(struct ThreadData) * THREADS);
 	for (int i = 0; i < THREADS; ++i) {
@@ -479,9 +481,10 @@ int main()
 	for (int i = 0; i < THREADS; ++i) {
 		thrd_join(thread_data[i].t, NULL);
 	}
+	mtx_unlock(&px_mtx);
 	thrd_join(dsp_thread, NULL);
+	mtx_destroy(&px_mtx);
 	free(thread_data);
-	free(pixels);
 
 	return EXIT_SUCCESS;
 }
