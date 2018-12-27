@@ -335,24 +335,24 @@ on_error(struct bufferevent *bev, short ev, void *data)
 	--nr_clients;
 }
 
-static inline void
-parse_line(uint8_t **buffer, struct client_data *client, uint32_t *l_nr_pixels)
+static inline uint8_t *
+parse_line(uint8_t *buffer, struct client_data *client, uint32_t *l_nr_pixels)
 {
 	bool save = false;
 	uint8_t *line;
 	if (unlikely(client->len)) {
 		// we cheat a little here
-		line = *buffer;
+		line = buffer;
 		int i = 0;
 		while (line[i] != '\n')
 			++i;
 
-		memcpy(&client->stored_cmd[client->len], *buffer, i + 1);
+		memcpy(&client->stored_cmd[client->len], buffer, i + 1);
 		client->len = 0;
 		line = client->stored_cmd;
-		*buffer = &(*buffer)[i + 1];
+		buffer = &buffer[i + 1];
 	} else {
-		line = *buffer;
+		line = buffer;
 		save = true;
 	}
 
@@ -385,7 +385,8 @@ parse_line(uint8_t **buffer, struct client_data *client, uint32_t *l_nr_pixels)
 	}
 
 	if (save)
-		*buffer = &line[1];
+		buffer = &line[1];
+	return buffer;
 }
 
 static void
@@ -411,7 +412,7 @@ on_read(struct bufferevent *bev, void *data)
 	sbuffer = &sbuffer[i + 1];
 
 	while (buffer != sbuffer)
-		parse_line(&buffer, client, &l_nr_pixels);
+		buffer = parse_line(buffer, client, &l_nr_pixels);
 
 	if (i != until) {
 		// store the data for the next iteration:
