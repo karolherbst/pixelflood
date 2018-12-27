@@ -423,6 +423,13 @@ on_read(struct bufferevent *bev, void *data)
 		if (buffer[i] == '\n')
 			break;
 
+	if (i == -1) {
+		memcpy(&client->stored_cmd[client->len], buffer, v.iov_len);
+		client->len += v.iov_len;
+		evbuffer_drain(buf, v.iov_len);
+		return;
+	}
+
 	sbuffer = &sbuffer[i + 1];
 
 	// first command might need to be extended
