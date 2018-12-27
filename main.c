@@ -216,7 +216,7 @@ sdl_gl_draw_loop(SDL_Window *window)
 	}
 
 	TTF_Init();
-	TTF_Font *font = TTF_OpenFont((char *)file, HEIGHT / 48);
+	TTF_Font *font = TTF_OpenFont((char *)file, 48);
 	SDL_Color tcolor = { 255, 255, 255 };
 	SDL_Color bgcolor = { 0, 0, 0 };
 	memcpy(&text2[4], IP, strlen(IP));
