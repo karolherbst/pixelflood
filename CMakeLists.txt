@@ -7,6 +7,8 @@ set(CMAKE_C_FLAGS "-flto -mtune=native -march=native -fwhole-program -g -ggdb3 -
 set(CMAKE_C_FLAGS_DEBUG "-O0 -fno-inline")
 set(CMAKE_C_FLAGS_RELEASE "-Ofast -finline -funsafe-loop-optimizations -fwhole-program -fomit-frame-pointer")
 
+set(CMAKE_C_LINK_FLAGS "-flto -Wl,-z,now -Wl,-z,relro -Wl,--as-needed")
+
 set(CMAKE_THREAD_PREFER_PTHREAD YES)
 
 include(FindPkgConfig)
