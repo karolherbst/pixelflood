@@ -39,6 +39,7 @@ static _Atomic uint32_t nr_clients;
 static const uint32_t WIDTH = 1920;
 static const uint32_t HEIGHT = 1080;
 static const uint32_t THREADS = 8;
+static const char * IP = "151.217.200.48:12345";
 static const uint16_t PORT = 12345;
 static const float FPS_INTERVAL = 1.0; //seconds
 
@@ -164,6 +165,7 @@ sdl_gl_draw_loop(SDL_Window *window)
 	mtx_unlock(&px_mtx);
 
 	char text[] = "FPS: XXXX Clients: XXXXX Mp: XXXXXXXX kp/s: XXXXXXX Mbit/s: XXXXXXX";
+	char text2[] = "IP:                      ";
 
 	SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 	if (!renderer) {
@@ -217,8 +219,11 @@ sdl_gl_draw_loop(SDL_Window *window)
 	TTF_Font *font = TTF_OpenFont((char *)file, HEIGHT / 48);
 	SDL_Color tcolor = { 255, 255, 255 };
 	SDL_Color bgcolor = { 0, 0, 0 };
+	memcpy(&text2[4], IP, strlen(IP));
 	SDL_Surface *tsurface = TTF_RenderText_Shaded(font, "Please stand by!                                 ", tcolor, bgcolor);
+	SDL_Surface *t2surface = TTF_RenderText_Shaded(font, text2, tcolor, bgcolor);
 	SDL_Texture *ttexture = SDL_CreateTextureFromSurface(renderer, tsurface);
+	SDL_Texture *t2texture = SDL_CreateTextureFromSurface(renderer, t2surface);
 
 	FcPatternDestroy(fcfont);
 	FcPatternDestroy(pat);
@@ -285,11 +290,15 @@ sdl_gl_draw_loop(SDL_Window *window)
 
 		SDL_Rect dstrect = { 0, 0, tsurface->w, tsurface->h };
 		SDL_RenderCopy(renderer, ttexture, NULL, &dstrect);
+		SDL_Rect dstrect2 = { 0, tsurface->h, t2surface->w, t2surface->h };
+		SDL_RenderCopy(renderer, t2texture, NULL, &dstrect2);
 		SDL_RenderPresent(renderer);
 	}
 
 	SDL_DestroyTexture(ttexture);
+	SDL_DestroyTexture(t2texture);
 	SDL_FreeSurface(tsurface);
+	SDL_FreeSurface(t2surface);
 	TTF_CloseFont(font);
 	TTF_Quit();
 
