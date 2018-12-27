@@ -214,10 +214,9 @@ sdl_gl_draw_loop(SDL_Window *window)
 	}
 
 	TTF_Init();
-	TTF_Font *font = TTF_OpenFont((char *)file, HEIGHT / 12);
+	TTF_Font *font = TTF_OpenFont((char *)file, HEIGHT / 48);
 	SDL_Color tcolor = { 255, 255, 255 };
 	SDL_Color bgcolor = { 0, 0, 0 };
-	SDL_Rect dstrect = { 0, 0, WIDTH, HEIGHT / 20 };
 	SDL_Surface *tsurface = TTF_RenderText_Shaded(font, "Please stand by!                                 ", tcolor, bgcolor);
 	SDL_Texture *ttexture = SDL_CreateTextureFromSurface(renderer, tsurface);
 
@@ -284,6 +283,7 @@ sdl_gl_draw_loop(SDL_Window *window)
 			SDL_Log("%f,%u,%"PRIu64",%"PRIu64",%"PRIu64"\n", fps, threads, pixels, pixels - px_last, data_cnt);
 		}
 
+		SDL_Rect dstrect = { 0, 0, tsurface->w, tsurface->h };
 		SDL_RenderCopy(renderer, ttexture, NULL, &dstrect);
 		SDL_RenderPresent(renderer);
 	}
