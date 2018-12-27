@@ -215,9 +215,10 @@ sdl_gl_draw_loop(SDL_Window *window)
 
 	TTF_Init();
 	TTF_Font *font = TTF_OpenFont((char *)file, HEIGHT / 12);
-	SDL_Color color = { 255, 255, 255 };
+	SDL_Color tcolor = { 255, 255, 255 };
+	SDL_Color bgcolor = { 0, 0, 0 };
 	SDL_Rect dstrect = { 0, 0, WIDTH, HEIGHT / 20 };
-	SDL_Surface *tsurface = TTF_RenderText_Solid(font, "Please stand by!                                 ", color);
+	SDL_Surface *tsurface = TTF_RenderText_Shaded(font, "Please stand by!                                 ", tcolor, bgcolor);
 	SDL_Texture *ttexture = SDL_CreateTextureFromSurface(renderer, tsurface);
 
 	FcPatternDestroy(fcfont);
@@ -278,7 +279,7 @@ sdl_gl_draw_loop(SDL_Window *window)
 
 			SDL_DestroyTexture(ttexture);
 			SDL_FreeSurface(tsurface);
-			tsurface = TTF_RenderText_Solid(font, (const char*)&text, color);
+			tsurface = TTF_RenderText_Shaded(font, (const char*)&text, tcolor, bgcolor);
 			ttexture = SDL_CreateTextureFromSurface(renderer, tsurface);
 			SDL_Log("%f,%u,%"PRIu64",%"PRIu64",%"PRIu64"\n", fps, threads, pixels, pixels - px_last, data_cnt);
 		}
