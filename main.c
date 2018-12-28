@@ -10,6 +10,9 @@
 #include <pthread.h>
 #include <threads.h>
 
+#include <fcntl.h>
+#include <sys/mman.h>
+
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
 #include <event2/event.h>
@@ -489,7 +492,8 @@ read_thread(void *data)
 	return 0;
 }
 
-int main()
+int
+server()
 {
 	pthread_setname_np(thrd_current(), "pixelflood main");
 
@@ -537,4 +541,40 @@ int main()
 	free(thread_data);
 
 	return EXIT_SUCCESS;
+}
+
+int
+fuzzing(const char *file)
+{
+	int f = open(file, O_RDONLY, 0);
+	if (f == -1)
+		return EXIT_FAILURE;
+
+	struct stat st;
+	if (stat(file, &st))
+		return EXIT_FAILURE;
+
+	uint8_t *line = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, f, 0);
+	uint32_t px;
+	struct client_data client = {
+		.c = 0,
+		.len = 0,
+	};
+
+	pixels = malloc(sizeof(*pixels) * WIDTH * HEIGHT);
+	parse_line_simple(line, &client, &px);
+	free(pixels);
+
+	return EXIT_SUCCESS;
+}
+
+
+int
+main(int argc, char const* const* argv)
+{
+	if (argc == 1)
+		return server();
+
+	if (!strcmp(argv[1], "fuzz") && argc == 3)
+		return fuzzing(argv[2]);
 }
