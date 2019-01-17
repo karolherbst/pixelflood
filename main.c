@@ -161,8 +161,20 @@ quit_application()
 		event_base_loopbreak(thread_data[i].evbase);
 }
 
+struct draw_funcs {
+	SDL_RendererFlags sdl_rendered_flags;
+};
+
+struct draw_funcs draw_funcs_gl = {
+	.sdl_renderer_flags = SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC,
+};
+
+struct draw_funcs draw_funcs_sw = {
+	.sdl_renderer_flags = SDL_RENDERER_SOFTWARE,
+};
+
 static int
-sdl_gl_draw_loop(SDL_Window *window)
+sdl_gl_draw_loop(SDL_Window *window, struct draw_funcs *funcs)
 {
 	pixels = malloc(sizeof(*pixels) * WIDTH * HEIGHT);
 	mtx_unlock(&px_mtx);
@@ -170,7 +182,7 @@ sdl_gl_draw_loop(SDL_Window *window)
 	char text[] = "FPS: XXXX Clients: XXXXX Mp: XXXXXXXX kp/s: XXXXXXX Mbit/s: XXXXXXX";
 	char text2[] = "IP:                      ";
 
-	SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, funcs->sdl_renderer_flags);
 	if (!renderer) {
 		printf("failed to create renderer\n");
 		exit(-1);
@@ -319,12 +331,18 @@ sdl_gl_draw_loop(SDL_Window *window)
 static int
 sdl_draw_loop(void *ptr)
 {
+	SDL_Window *window;
 	SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
-	SDL_Window *window = SDL_CreateWindow("pixelflood", 0, 0, WIDTH, HEIGHT,
+	window = SDL_CreateWindow("pixelflood", 0, 0, WIDTH, HEIGHT,
 		SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE);
-
 	if (window)
-		return sdl_gl_draw_loop(window);
+		return sdl_gl_draw_loop(window, &draw_funcs_gl);
+
+	window = SDL_CreateWindow("pixelflood", 0, 0, WIDTH, HEIGHT,
+		SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE);
+	if (window)
+		return sdl_gl_draw_loop(window, &draw_funcs_sw);
+
 	mtx_unlock(&px_mtx);
 	printf("failed to create SDL window\n");
 	exit(-1);
