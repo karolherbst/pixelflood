@@ -44,6 +44,7 @@ static const uint32_t HEIGHT = 1080;
 static const uint32_t THREADS = 8;
 static const char * IP = "151.217.200.48:12345";
 static const uint16_t PORT = 12345;
+static const uint8_t FONT_SIZE = 44;
 static const float FPS_INTERVAL = 1.0; //seconds
 
 static struct event_base *evbase;
@@ -231,7 +232,7 @@ sdl_gl_draw_loop(SDL_Window *window, struct draw_funcs *funcs)
 	}
 
 	TTF_Init();
-	TTF_Font *font = TTF_OpenFont((char *)file, 48);
+	TTF_Font *font = TTF_OpenFont((char *)file, FONT_SIZE);
 	SDL_Color tcolor = { 255, 255, 255 };
 	SDL_Color bgcolor = { 0, 0, 0 };
 	memcpy(&text2[4], IP, strlen(IP));
