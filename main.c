@@ -294,6 +294,8 @@ sdl_gl_draw_loop(SDL_Window *window, struct draw_funcs *funcs)
 			insert_nr_dec(&text[44], (pixels - px_last) / 1000, 7);
 			insert_nr_dec(&text[60], data_cnt / 125000, 7);
 
+			SDL_Log("%f,%u,%"PRIu64",%"PRIu64",%"PRIu64"\n", fps, threads, pixels, pixels - px_last, data_cnt);
+
 			px_last = pixels;
 			data_cnt = 0;
 
@@ -301,7 +303,6 @@ sdl_gl_draw_loop(SDL_Window *window, struct draw_funcs *funcs)
 			SDL_FreeSurface(tsurface);
 			tsurface = TTF_RenderText_Shaded(font, (const char*)&text, tcolor, bgcolor);
 			ttexture = SDL_CreateTextureFromSurface(renderer, tsurface);
-			SDL_Log("%f,%u,%"PRIu64",%"PRIu64",%"PRIu64"\n", fps, threads, pixels, pixels - px_last, data_cnt);
 		}
 
 		SDL_Rect dstrect = { 0, 0, tsurface->w, tsurface->h };
