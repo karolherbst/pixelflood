@@ -388,7 +388,7 @@ parse_line(uint8_t *line, struct client_data *client, uint32_t *l_nr_pixels)
 			updatePxARGB(x, y, argb);
 			++(*l_nr_pixels);
 		}
-	} else if (likely(line[0] == 'S')) {
+	} else if (line[0] == 'S') {
 		char out[20];
 		size_t l = sprintf(out, "SIZE %i %i\n", WIDTH, HEIGHT);
 		send(client->c, out, l, 0);
@@ -407,7 +407,7 @@ parse_line_ex(uint8_t *buffer, struct client_data *client, uint32_t *l_nr_pixels
 {
 	bool save = false;
 	uint8_t *line;
-	if (likely(client->len)) {
+	if (client->len) {
 		// we cheat a little here
 		line = buffer;
 		int i = 0;
