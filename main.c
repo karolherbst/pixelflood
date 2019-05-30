@@ -46,6 +46,7 @@ static const char * IP = "151.217.200.48:12345";
 static const uint16_t PORT = 12345;
 static const uint8_t FONT_SIZE = 44;
 static const float FPS_INTERVAL = 1.0; //seconds
+static const bool SUPPORT_GRAY = true;
 
 static struct event_base *evbase;
 
@@ -115,7 +116,7 @@ read_nr_hex(uint8_t **buf)
 	uint8_t *color = *buf;
 
 	// gray
-	if (hex_char_to_number_map[color[2]] == 0xff) {
+	if (SUPPORT_GRAY && unlikely(hex_char_to_number_map[color[2]] == 0xff)) {
 		return
 			hex_char_to_number_map[color[0]] << 20 |
 			hex_char_to_number_map[color[1]] << 16 |
