@@ -67,7 +67,7 @@ static uint8_t
 hex_char_to_number_map[256];
 
 static void
-init_char_to_number_map() {
+init_char_to_number_map(void) {
 	memset(hex_char_to_number_map, 0xff, 256);
 
 	for (int i = 0; i <= 0x9; ++i)
@@ -147,7 +147,7 @@ read_nr_hex(uint8_t **buf)
 }
 
 static void
-quit_application()
+quit_application(void)
 {
 	struct timeval timeout = {
 		.tv_sec = 1,
@@ -513,7 +513,7 @@ read_thread(void *data)
 }
 
 int
-server()
+server(void)
 {
 	pthread_setname_np(thrd_current(), "pixelflood main");
 
