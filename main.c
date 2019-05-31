@@ -65,20 +65,12 @@ updatePxARGB(uint_fast16_t x, uint_fast16_t y, uint32_t argb)
 }
 
 static uint8_t
-hex_char_to_number_map[256];
-
-static void
-init_char_to_number_map(void) {
-	memset(hex_char_to_number_map, 0xff, 256);
-
-	for (int i = 0; i <= 0x9; ++i)
-		hex_char_to_number_map['0' + i] = i;
-
-	for (int i = 0; i < 6; ++i) {
-		hex_char_to_number_map['a' + i] = 0xa + i;
-		hex_char_to_number_map['A' + i] = 0xa + i;
-	}
-}
+hex_char_to_number_map[256] = {
+	[0 ... 255] = -1,
+	['0'] = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+	['A'] = 10, 11, 12, 13, 14, 15,
+	['a'] = 10, 11, 12, 13, 14, 15,
+};
 
 static void
 insert_nr_dec(char *buf, uint64_t value, uint16_t length)
@@ -520,7 +512,6 @@ server(void)
 
 	thrd_t dsp_thread;
 
-	init_char_to_number_map();
 	mtx_init(&px_mtx, mtx_plain);
 	mtx_lock(&px_mtx);
 
