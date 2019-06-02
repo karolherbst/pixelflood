@@ -4,6 +4,8 @@ dist: xenial
 
 addons:
   apt:
+    sources:
+      - ubuntu-toolchain-r-test
     packages:
       - cmake
       - libc6-dev
@@ -11,6 +13,13 @@ addons:
       - libfontconfig1-dev
       - libsdl2-dev
       - libsdl2-ttf-dev
+
+matrix:
+  include:
+    addons:
+      apt:
+        packages:
+        - gcc-6
 
 cache:
   apt: true
