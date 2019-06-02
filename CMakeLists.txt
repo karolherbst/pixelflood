@@ -8,7 +8,7 @@ set(CMAKE_C_FLAGS "-fPIE -flto -mtune=native -march=native -fwhole-program -g -g
 set(CMAKE_C_FLAGS_DEBUG "-O0 -fno-inline")
 set(CMAKE_C_FLAGS_RELEASE "-Ofast -finline -funsafe-loop-optimizations -fomit-frame-pointer")
 
-set(CMAKE_C_LINK_FLAGS "-pie -flto -Wl,-z,defs -Wl,-z,now -Wl,--as-needed")
+set(CMAKE_C_LINK_FLAGS "-pie -flto -fuse-linker-plugin -Wl,-z,defs -Wl,-z,now -Wl,--as-needed")
 
 set(CMAKE_THREAD_PREFER_PTHREAD YES)
 
