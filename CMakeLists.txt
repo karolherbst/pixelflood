@@ -17,7 +17,7 @@ include(FindPkgConfig)
 find_package(Threads REQUIRED)
 pkg_check_modules(SDL2 sdl2)
 pkg_check_modules(SDL2_TTF SDL2_ttf)
-pkg_check_modules(LIBEVENT libevent)
+pkg_check_modules(LIBEVENT_CORE libevent_core)
 pkg_check_modules(LIBEVENT_PTHREADS libevent_pthreads)
 pkg_check_modules(FONTCONFIG fontconfig)
 
@@ -28,15 +28,15 @@ add_executable(pixelflood
 target_include_directories(pixelflood
   PRIVATE
     ${FONTCONFIG_INCLUDE_DIRS}
-    ${LIBEVENT_INCLUDE_DIRS}
+    ${LIBEVENT_CORE_INCLUDE_DIRS}
     ${SDL2_INCLUDE_DIRS}
     ${SDL2_TTF_INCLUDE_DIRS}
 )
 
 target_link_libraries(pixelflood
   ${FONTCONFIG_LIBRARIES}
-  ${LIBEVENT_LIBRARIES}
-  ${LIBEVENT_PTHREADS_LIBRARIES}
+  ${LIBEVENT_CORE_LINK_LIBRARIES}
+  ${LIBEVENT_PTHREADS_LINK_LIBRARIES}
   ${SDL2_LIBRARIES}
   ${SDL2_TTF_LIBRARIES}
   Threads::Threads
