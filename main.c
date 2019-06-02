@@ -39,14 +39,14 @@ static _Atomic uint64_t nr_pixels;
 static _Atomic uint64_t data_cnt = 0;
 static _Atomic uint32_t nr_clients;
 
-static const uint32_t WIDTH = 1920;
-static const uint32_t HEIGHT = 1080;
-static const uint32_t THREADS = 8;
-static const char * IP = "151.217.200.48:12345";
-static const uint16_t PORT = 12345;
-static const uint8_t FONT_SIZE = 44;
-static const float FPS_INTERVAL = 1.0; //seconds
-static const bool SUPPORT_GRAY = true;
+#define WIDTH 1920
+#define HEIGHT 1080
+#define THREADS 8
+#define IP "151.217.200.48:12345"
+#define PORT 12345
+#define FONT_SIZE 44
+#define FPS_INTERVAL 1.0 //seconds
+#define SUPPORT_GRAY true
 
 static struct event_base *evbase;
 
