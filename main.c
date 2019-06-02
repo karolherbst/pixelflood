@@ -156,7 +156,7 @@ quit_application(void)
 }
 
 struct draw_funcs {
-	SDL_RendererFlags sdl_rendered_flags;
+	SDL_RendererFlags sdl_renderer_flags;
 };
 
 struct draw_funcs draw_funcs_gl = {
