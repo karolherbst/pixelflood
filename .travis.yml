@@ -4,8 +4,6 @@ dist: xenial
 
 addons:
   apt:
-    sources:
-      - ubuntu-toolchain-r-test
     packages:
       - cmake
       - libc6-dev
@@ -16,27 +14,53 @@ addons:
 
 matrix:
   include:
-    addons:
-      apt:
-        packages:
-          - gcc-6
-    compiler:
-      - gcc
-    env:
-      - MATRIX_EVAL="CC=gcc-6"
+    - addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-6
+      env:
+        - MATRIX_EVAL="CC=gcc-6"
+
+    - addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-7
+      env:
+        - MATRIX_EVAL="CC=gcc-7"
+
+    - addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-8
+      env:
+        - MATRIX_EVAL="CC=gcc-8"
+
+    - addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-9
+      env:
+        - MATRIX_EVAL="CC=gcc-9"
 
 cache:
   apt: true
-
-compiler:
-  - clang
-  - gcc
 
 git:
   depth: 1
 
 os:
   - linux
+
+before_install:
+    - eval "${MATRIX_EVAL}"
 
 script:
   - mkdir build
