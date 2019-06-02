@@ -64,7 +64,7 @@ updatePxARGB(uint_fast16_t x, uint_fast16_t y, uint32_t argb)
 	pixels[x + y * WIDTH] = argb;
 }
 
-static uint8_t
+static const uint8_t
 hex_char_to_number_map[256] = {
 	[0 ... 255] = -1,
 	['0'] = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
