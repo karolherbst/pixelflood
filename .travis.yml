@@ -19,7 +19,11 @@ matrix:
     addons:
       apt:
         packages:
-        - gcc-6
+          - gcc-6
+    compiler:
+      - gcc
+    env:
+      - MATRIX_EVAL="CC=gcc-6"
 
 cache:
   apt: true
