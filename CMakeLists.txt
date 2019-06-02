@@ -4,11 +4,11 @@ project(pixelflood C)
 
 set(CMAKE_C_STANDARD_REQUIRED 11)
 
-set(CMAKE_C_FLAGS "-flto -mtune=native -march=native -fwhole-program -g -ggdb3 -Wall -fno-stack-protector -fprefetch-loop-arrays")
+set(CMAKE_C_FLAGS "-fPIE -flto -mtune=native -march=native -fwhole-program -g -ggdb3 -Wall -fstack-protector-strong -fprefetch-loop-arrays -D_FORTIFY_SOURCE=2")
 set(CMAKE_C_FLAGS_DEBUG "-O0 -fno-inline")
-set(CMAKE_C_FLAGS_RELEASE "-Ofast -finline -funsafe-loop-optimizations -fwhole-program -fomit-frame-pointer")
+set(CMAKE_C_FLAGS_RELEASE "-Ofast -finline -funsafe-loop-optimizations -fomit-frame-pointer")
 
-set(CMAKE_C_LINK_FLAGS "-flto -Wl,-z,now -Wl,-z,relro -Wl,--as-needed")
+set(CMAKE_C_LINK_FLAGS "-pie -flto -Wl,-z,defs -Wl,-z,now -Wl,--as-needed")
 
 set(CMAKE_THREAD_PREFER_PTHREAD YES)
 
