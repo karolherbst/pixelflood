@@ -6,6 +6,7 @@ addons:
   apt:
     packages:
       - cmake
+      - libc6-dev
       - libevent-dev
       - libfontconfig1-dev
       - libsdl2-dev
