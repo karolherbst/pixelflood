@@ -750,7 +750,7 @@ on_error(struct bufferevent *bev, short ev, void *data)
 }
 
 static inline uint8_t *
-parse_line(uint8_t *line, struct client_data *client, uint32_t *l_nr_pixels)
+parse_line(uint8_t *line, struct client_data *client, uint16_t *l_nr_pixels)
 {
 	if (likely(line[0] == 'P' && line[1] == 'X')) {
 		line = &line[3];
@@ -784,7 +784,7 @@ parse_line(uint8_t *line, struct client_data *client, uint32_t *l_nr_pixels)
 }
 
 static inline uint8_t *
-parse_line_ex(uint8_t *buffer, struct client_data *client, uint32_t *l_nr_pixels)
+parse_line_ex(uint8_t *buffer, struct client_data *client, uint16_t *l_nr_pixels)
 {
 	bool save = false;
 	uint8_t *line;
@@ -812,7 +812,7 @@ parse_line_ex(uint8_t *buffer, struct client_data *client, uint32_t *l_nr_pixels
 }
 
 static inline uint8_t *
-parse_line_simple(uint8_t *buffer, struct client_data *client, uint32_t *l_nr_pixels)
+parse_line_simple(uint8_t *buffer, struct client_data *client, uint16_t *l_nr_pixels)
 {
 	return &parse_line(buffer, client, l_nr_pixels)[1];
 }
@@ -827,7 +827,7 @@ on_read(struct bufferevent *bev, void *data)
 	evbuffer_peek(buf, -1, NULL, &v, 1);
 	uint8_t *sbuffer = v.iov_base;
 	uint8_t *buffer = v.iov_base;
-	uint32_t l_nr_pixels = 0;
+	uint16_t l_nr_pixels = 0;
 
 	data_cnt += v.iov_len;
 
@@ -955,7 +955,7 @@ fuzzing(const char *file)
 		return EXIT_FAILURE;
 
 	uint8_t *line = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, f, 0);
-	uint32_t px;
+	uint16_t px;
 	struct client_data client = {
 		.c = 0,
 		.len = 0,
