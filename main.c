@@ -752,7 +752,7 @@ on_error(struct bufferevent *bev, short ev, void *data)
 static inline uint8_t *
 parse_line(uint8_t *line, struct client_data *client, uint16_t *l_nr_pixels)
 {
-	if (likely(line[0] == 'P' && line[1] == 'X')) {
+	if (likely(line[0] == 'P')) {
 		line = &line[3];
 		int x = read_nr_dec(&line);
 		line = &line[1];
