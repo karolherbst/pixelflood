@@ -50,6 +50,7 @@ static const uint16_t PORT = 12345;
 static const uint8_t FONT_SIZE = 44;
 static const float FPS_INTERVAL = 1.0; //seconds
 static const bool SUPPORT_GRAY = true;
+static const uint32_t BYTES = WIDTH * HEIGHT * 4;
 
 static struct event_base *evbase;
 
@@ -256,7 +257,7 @@ sdl_gl_draw_loop(SDL_Window *window, struct draw_funcs *funcs)
 		return -1;
 	}
 
-	pixels = malloc(sizeof(*pixels) * WIDTH * HEIGHT);
+	pixels = malloc(BYTES);
 	mtx_unlock(&px_mtx);
 
 	SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
@@ -546,12 +547,12 @@ gl_draw_loop(SDL_Window *window, struct draw_funcs *funcs)
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, PBO);
 	if (use_gpu_buffer) {
 		GLbitfield flags = GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT;
-		glBufferStorage(GL_PIXEL_UNPACK_BUFFER, WIDTH * HEIGHT * 4, NULL, flags);
-		pixels = glMapBufferRange(GL_PIXEL_UNPACK_BUFFER, 0, WIDTH * HEIGHT * 4, flags | GL_MAP_FLUSH_EXPLICIT_BIT);
+		glBufferStorage(GL_PIXEL_UNPACK_BUFFER, BYTES, NULL, flags);
+		pixels = glMapBufferRange(GL_PIXEL_UNPACK_BUFFER, 0, BYTES, flags | GL_MAP_FLUSH_EXPLICIT_BIT);
 		mtx_unlock(&px_mtx);
 	} else {
-		glBufferData(GL_PIXEL_UNPACK_BUFFER, WIDTH * HEIGHT * 4, NULL, GL_STREAM_DRAW);
-		pixels = malloc(sizeof(*pixels) * WIDTH * HEIGHT);
+		glBufferData(GL_PIXEL_UNPACK_BUFFER, BYTES, NULL, GL_STREAM_DRAW);
+		pixels = malloc(BYTES);
 		mtx_unlock(&px_mtx);
 	}
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
@@ -656,10 +657,10 @@ gl_draw_loop(SDL_Window *window, struct draw_funcs *funcs)
 		// without buffer_storage we have to upload data to the PBO
 		if (!use_gpu_buffer) {
 			void *pboPixels = glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-			memcpy(pboPixels, pixels, WIDTH * HEIGHT * 4);
+			memcpy(pboPixels, pixels, BYTES);
 			glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
 		} else {
-			glFlushMappedBufferRange(GL_PIXEL_UNPACK_BUFFER, 0, WIDTH * HEIGHT * 4);
+			glFlushMappedBufferRange(GL_PIXEL_UNPACK_BUFFER, 0, BYTES);
 		}
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, WIDTH, HEIGHT, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
 		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
@@ -961,7 +962,7 @@ fuzzing(const char *file)
 		.len = 0,
 	};
 
-	pixels = malloc(sizeof(*pixels) * WIDTH * HEIGHT);
+	pixels = malloc(BYTES);
 	parse_line_simple(line, &client, &px);
 	free(pixels);
 
