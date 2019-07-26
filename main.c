@@ -42,6 +42,8 @@ static _Atomic uint64_t nr_pixels;
 static _Atomic uint64_t data_cnt = 0;
 static _Atomic uint32_t nr_clients;
 
+#define align_pot(val, align) ((val) + (align) - 1) & ~((align) - 1)
+
 static const uint32_t WIDTH = 1920;
 static const uint32_t HEIGHT = 1080;
 static const uint32_t THREADS = 8;
@@ -50,7 +52,7 @@ static const uint16_t PORT = 12345;
 static const uint8_t FONT_SIZE = 44;
 static const float FPS_INTERVAL = 1.0; //seconds
 static const bool SUPPORT_GRAY = true;
-static const uint32_t BYTES = WIDTH * HEIGHT * 4;
+static const uint32_t BYTES = align_pot(WIDTH * HEIGHT * 4, (2 << 20));
 
 static struct event_base *evbase;
 
@@ -919,6 +921,22 @@ server(void)
 	evthread_use_pthreads();
 
 	mtx_lock(&px_mtx);
+	// add some hints to the memory region
+
+	#define madvise_test(flag) \
+	do { \
+		int ret = madvise(pixels, BYTES, flag); \
+		if (ret) \
+			printf("madvise with flag " #flag " failed\n"); \
+	} while (false);
+	// access is totally random
+	madvise_test(MADV_RANDOM);
+	// tell the kernel to never merge pages (some might force it)
+	madvise_test(MADV_UNMERGEABLE);
+	// using 2MB pages should improve performance
+	madvise_test(MADV_HUGEPAGE);
+	#undef madvise_test
+
 	// initialize threads
 	thread_data = malloc(sizeof(struct ThreadData) * THREADS);
 	for (int i = 0; i < THREADS; ++i) {
