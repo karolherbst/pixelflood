@@ -1,3 +1,6 @@
+#define __USE_GNU 1
+#define _GNU_SOURCE
+
 #include <inttypes.h>
 #include <stdatomic.h>
 #include <stdbool.h>
@@ -6,7 +9,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#define __USE_GNU 1
 #include <pthread.h>
 #include <threads.h>
 
